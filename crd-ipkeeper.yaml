@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: crd-ipkeeper
+  namespace: kube-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: crd-ipkeeper
+rules:
+- apiGroups:
+  - ""
+  - extensions
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: crd-ipkeeper
+roleRef:
+  name: crd-ipkeeper
+  kind: ClusterRole
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: crd-ipkeeper
+  namespace: kube-system
+
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: crd-ipkeeper
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: crd-ipkeeper
+  template:
+    metadata:
+      labels:
+        app: crd-ipkeeper
+        component: network
+        type: infra
+    spec:
+      tolerations:
+      - effect: NoSchedule
+        key: node.kubernetes.io/not-ready
+        operator: Exists
+      serviceAccountName: crd-ipkeeper
+      hostNetwork: true
+      hostPID: true
+      containers:
+      - name: crd-ipkeeper
+        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:1.0.0
+        imagePullPolicy: Always
+        securityContext:
+          privileged: false
+          capabilities:
+            add: ["NET_ADMIN", "SYS_PTRACE", "SYS_ADMIN"]
+        volumeMounts:
+        - mountPath: /var/run
+          name: socket
+      volumes:
+      - name: socket
+        hostPath:
+          path: /var/run
