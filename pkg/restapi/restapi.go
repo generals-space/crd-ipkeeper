@@ -15,15 +15,13 @@ type PodRequest struct {
 	PodNamespace string `json:"pod_namespace"`
 	ContainerID  string `json:"container_id"`
 	NetNs        string `json:"net_ns"`
+	// cni插件使用的网桥设备的名称, 一般默认为cni0.
+	CNI0         string `json:"cni0"`
 }
 
 // PodResponse ...
 type PodResponse struct {
 	IPAddress  string `json:"address"`
-	MacAddress string `json:"mac_address"`
-	CIDR       string `json:"cidr"`
-	Gateway    string `json:"gateway"`
-	Mtu        int    `json:"mtu"`
 }
 
 // CNIServerClient ...

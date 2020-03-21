@@ -12,7 +12,7 @@ func generateNicName(containerID string) (string, string) {
 	return fmt.Sprintf("%s_h", containerID[0:12]), fmt.Sprintf("%s_c", containerID[0:12])
 }
 
-func (csh *CNIServerHandler) setNic(podName, podNamespace, netns, containerID, cni0, ip, gateway string) (err error) {
+func (csh *CNIServerHandler) setNic(podName, podNamespace, netns, containerID, cni0, ip string) (err error) {
 	// 此处我们手动创建veth对, 为了避免与已有设备名称冲突, 这里我们根据containerID生成.
 	// 之后将属于容器的veth端移入container, 再将其重命名为eth0(kubelet要求必须要为eth0).
 	hostVethName, containerVethName := generateNicName(containerID)
@@ -20,7 +20,6 @@ func (csh *CNIServerHandler) setNic(podName, podNamespace, netns, containerID, c
 	veth := netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
 			Name: hostVethName,
-			MTU:  1400,
 		},
 		PeerName: containerVethName,
 	}
@@ -38,22 +37,22 @@ func (csh *CNIServerHandler) setNic(podName, podNamespace, netns, containerID, c
 	// 将属于宿主机的那一端接入cni0网桥.
 	cni0Link, err := netlink.LinkByName(cni0)
 	if err != nil {
-		return fmt.Errorf("can not find container nic %s %v", hostVethName, err)
+		return fmt.Errorf("failed to find bridge device %s: %s", cni0, err)
 	}
 	hostVeth, err := netlink.LinkByName(hostVethName)
 	if err != nil {
-		return fmt.Errorf("can not find container nic %s %v", hostVethName, err)
+		return fmt.Errorf("failed to find host veth %s: %s", hostVethName, err)
 	}
 	err = netlink.LinkSetUp(hostVeth)
 	if err != nil {
-		return fmt.Errorf("can not set container nic %s up %v", hostVethName, err)
+		return fmt.Errorf("can not set host veth %s up: %s", hostVethName, err)
 	}
 	err = netlink.LinkSetMaster(hostVeth, cni0Link)
 	if err != nil {
 		return fmt.Errorf("failed to set host veth %s master to %s: %s", hostVethName, cni0, err)
 	}
 
-	err = setContainerNic(containerVethName, ip, gateway, netns)
+	err = setContainerNic(containerVethName, ip, netns)
 	if err != nil {
 		return err
 	}
@@ -85,7 +84,7 @@ func (csh *CNIServerHandler) deleteNic(netns, containerID string) error {
 }
 
 // setContainerNic 容器内部的操作.
-func setContainerNic(nicName, ipAddr, gateway, netnsPath string) error {
+func setContainerNic(nicName, ipAddr, netnsPath string) error {
 	containerVeth, err := netlink.LinkByName(nicName)
 	if err != nil {
 		return fmt.Errorf("can not find container nic %s %v", nicName, err)
