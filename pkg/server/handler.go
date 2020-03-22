@@ -2,7 +2,6 @@ package server
 
 import (
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/emicklei/go-restful"
@@ -37,65 +36,60 @@ func (csh *CNIServerHandler) handleAdd(req *restful.Request, resp *restful.Respo
 		resp.WriteHeaderAndEntity(http.StatusBadRequest, err)
 		return
 	}
-	klog.Infof("add port request %v", podReq)
+	klog.Infof("parsed request %v", podReq)
 
-	var ipAddr string
+	var ipAddr, gateway string
 	for i := 0; i < 10; i++ {
-		pod, err := csh.KubeClient.CoreV1().Pods(podReq.PodNamespace).Get(podReq.PodName, v1.GetOptions{})
+		pod, err := csh.KubeClient.
+			CoreV1().
+			Pods(podReq.PodNamespace).
+			Get(podReq.PodName, v1.GetOptions{})
 		if err != nil {
 			klog.Errorf("get pod %s/%s failed %v", podReq.PodNamespace, podReq.PodName, err)
 			resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
 			return
 		}
-		ipAddr = pod.Annotations[util.IpAddressAnnotation]
+		ipAddr = pod.Annotations[util.IPAddressAnnotation]
+		gateway = pod.Annotations[util.GatewayAnnotation]
 
-		if ipAddr == "" {
+		if ipAddr == "" || gateway == "" {
 			// wait controller assign an address
 			time.Sleep(2 * time.Second)
 			continue
 		}
 		break
 	}
+	// 如果 ipAddr 还是空, 说明此Pod/Deploy/DaemonSet没有声明固定IP的注解, 直接返回.
+	if ipAddr == "" {
+		resp.WriteHeaderAndEntity(
+			http.StatusOK,
+			restapi.PodResponse{
+				DoNothing: true,
+			},
+		)
+		return
+	}
 
 	klog.Infof("create container ip %s", ipAddr)
 
-	err = csh.setNic(
-		podReq.PodName,
-		podReq.PodNamespace,
-		podReq.NetNs,
-		podReq.ContainerID,
-		podReq.CNI0,
-		ipAddr,
-	)
+	err = csh.setVethPair(podReq, ipAddr, gateway)
 	if err != nil {
-		klog.Errorf("configure nic failed %v", err)
+		klog.Errorf("set veth pair failed %s", err)
 		resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
 		return
 	}
 	resp.WriteHeaderAndEntity(
 		http.StatusOK,
 		restapi.PodResponse{
-			IPAddress:  strings.Split(ipAddr, "/")[0],
+			IPAddress: ipAddr,
+			Gateway:   gateway,
 		},
 	)
 	return
 }
 
+// handleDel 处理Pod移除的事件
 func (csh *CNIServerHandler) handleDel(req *restful.Request, resp *restful.Response) {
-	podReq := &restapi.PodRequest{}
-	err := req.ReadEntity(podReq)
-	if err != nil {
-		klog.Errorf("parse del request failed %v", err)
-		resp.WriteHeaderAndEntity(http.StatusBadRequest, err)
-		return
-	}
-	klog.Infof("delete port request %v", podReq)
-	err = csh.deleteNic(podReq.NetNs, podReq.ContainerID)
-	if err != nil {
-		klog.Errorf("del nic failed %v", err)
-		resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
-		return
-	}
 	resp.WriteHeader(http.StatusNoContent)
 	return
 }

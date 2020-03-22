@@ -60,16 +60,21 @@ spec:
       hostPID: true
       containers:
       - name: crd-ipkeeper
-        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.1
-        imagePullPolicy: Always
+        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.7
         securityContext:
-          privileged: false
+          privileged: true
           capabilities:
             add: ["NET_ADMIN", "SYS_PTRACE", "SYS_ADMIN"]
         volumeMounts:
         - mountPath: /var/run
           name: socket
+        - mountPath: /var/run/netns
+          name: host-netns
       volumes:
       - name: socket
         hostPath:
           path: /var/run
+      - name: host-netns
+        hostPath:
+          path: /var/run/netns
+

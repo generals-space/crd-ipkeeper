@@ -51,6 +51,8 @@ func createHandler(csh *CNIServerHandler) http.Handler {
 	ws.Route(
 		ws.POST("/add").To(csh.handleAdd).Reads(restapi.PodRequest{}),
 	)
+	// 处理Pod移除的事件, 从cni网桥拨出宿主机端的veth等操作.
+	// ...不过我觉得根本没必要, 所以 csh.handleDel() 其实是个空函数.
 	ws.Route(
 		ws.POST("/del").To(csh.handleDel).Reads(restapi.PodRequest{}),
 	)

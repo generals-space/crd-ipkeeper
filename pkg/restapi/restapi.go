@@ -16,12 +16,15 @@ type PodRequest struct {
 	ContainerID  string `json:"container_id"`
 	NetNs        string `json:"net_ns"`
 	// cni插件使用的网桥设备的名称, 一般默认为cni0.
-	CNI0         string `json:"cni0"`
+	CNI0 string `json:"cni0"`
 }
 
 // PodResponse ...
 type PodResponse struct {
-	IPAddress  string `json:"address"`
+	// IPAddress 点分十进制+掩码字符串, 如`192.168.0.1/24`
+	IPAddress string `json:"address"`
+	Gateway    string `json:"gateway"`
+	DoNothing bool   `json:"do_nothing"`
 }
 
 // CNIServerClient ...
@@ -29,7 +32,7 @@ type CNIServerClient struct {
 	*gorequest.SuperAgent
 }
 
-// NewCNIServerClient 由CNI插件调用以进行初始化, 
+// NewCNIServerClient 由CNI插件调用以进行初始化,
 // 之后可以调用该client对象的Add/Del方法.
 func NewCNIServerClient(socketAddress string) *CNIServerClient {
 	request := gorequest.New()
