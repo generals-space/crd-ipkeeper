@@ -6,6 +6,7 @@ import (
 	"k8s.io/klog"
 
 	"github.com/generals-space/crd-ipkeeper/pkg/server"
+	"github.com/generals-space/crd-ipkeeper/pkg/signals"
 )
 
 func main() {
@@ -18,6 +19,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	signals.SetupSignalHandler()
 	server.NewController(config)
 	server.RunServer(config)
 }
