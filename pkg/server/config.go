@@ -5,11 +5,12 @@ import (
 
 	"github.com/spf13/pflag"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
+
+	"github.com/generals-space/crd-ipkeeper/pkg/kubeclient"
 )
 
+// Configuration ...
 type Configuration struct {
 	BindSocket     string
 	KubeConfigFile string
@@ -32,37 +33,13 @@ func ParseFlags() (*Configuration, error) {
 		BindSocket:     *argBindSocket,
 		KubeConfigFile: *argKubeConfigFile,
 	}
-	err := config.initKubeClient()
+	// 这里注意结构体成员不能与`:=`一起使用, 需要预告声明err变量, 
+	// 否则会出现`non-name config.KubeClient on left side of :=`的报错.
+	var err error
+	config.KubeClient, err = kubeclient.NewKubeClient(config.KubeConfigFile)
 	if err != nil {
 		return nil, err
 	}
 	klog.Infof("bind socket: %s", config.BindSocket)
 	return config, nil
-}
-
-func (config *Configuration) initKubeClient() error {
-	var cfg *rest.Config
-	var err error
-	if config.KubeConfigFile == "" {
-		klog.Infof("no --kubeconfig, use in-cluster kubernetes config")
-		cfg, err = rest.InClusterConfig()
-		if err != nil {
-			klog.Errorf("use in cluster config failed %v", err)
-			return err
-		}
-	} else {
-		cfg, err = clientcmd.BuildConfigFromFlags("", config.KubeConfigFile)
-		if err != nil {
-			klog.Errorf("use --kubeconfig %s failed %v", config.KubeConfigFile, err)
-			return err
-		}
-	}
-	kubeClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		klog.Errorf("init kubernetes client failed %v", err)
-		return err
-	}
-
-	config.KubeClient = kubeClient
-	return nil
 }
