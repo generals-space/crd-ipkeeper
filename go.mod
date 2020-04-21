@@ -17,6 +17,7 @@ require (
 	k8s.io/api v0.17.4 // indirect
 	k8s.io/apimachinery v0.17.4
 	k8s.io/client-go v0.17.0
+	k8s.io/code-generator v0.18.2 // indirect
 	k8s.io/klog v1.0.0
 	k8s.io/utils v0.0.0-20200322164244-327a8059b905 // indirect
 	moul.io/http2curl v1.0.0 // indirect
