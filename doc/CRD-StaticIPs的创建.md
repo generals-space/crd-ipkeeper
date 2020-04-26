@@ -15,7 +15,35 @@ touch pkg/apis/ipkeeper/v1/types.go
 cannot use &(StaticIPsList literal) (value of type *StaticIPsList) as runtime.Object value in argument to scheme.AddKnownTypes: missing method DeepCopyObject
 ```
 
-接下来使用`code-generator`项目生成代码, 需要`code-generator`和`apimachinery`两个项目在`GOPATH`目录下, 我们的项目也要在`GOPATH`目录下, 这里用软链接完成.
+接下来使用`code-generator`项目生成代码, 需要`code-generator`和`apimachinery`两个项目在`GOPATH`目录下.
+
+```bash
+mkdir -p $GOPATH/src/k8s.io
+cd $GOPATH/src/k8s.io/
+
+git clone https://github.com/kubernetes/code-generator.git
+cd code-generator
+git checkout -b v0.17.0 v0.17.0
+go mod vendor
+cd ..
+
+git clone https://github.com/kubernetes/apimachinery.git
+cd apimachinery
+git checkout -b v0.17.0 v0.17.0
+go mod vendor
+cd ..
+```
+
+注意: `apimachinery`必须要在GOPATH目录下, 否则在生成过程中可能出现如下报错.
+
+```
+Generating deepcopy funcs
+F0421 10:09:13.896524   30295 deepcopy.go:885] Hit an unsupported type invalid type for invalid type, from github.com/generals-space/crd-ipkeeper/pkg/apis/ipkeeper/v1.StaticIPs
+```
+
+------
+
+我们的项目也要在`GOPATH`目录下, 这里用软链接完成.
 
 ```console
 $ mkdir -p $GOPATH/github.com/generals-space
@@ -25,13 +53,6 @@ Generating deepcopy funcs
 Generating clientset for ipkeeper:v1 at github.com/generals-space/crd-ipkeeper/pkg/client/clientset
 Generating listers for ipkeeper:v1 at github.com/generals-space/crd-ipkeeper/pkg/client/listers
 Generating informers for ipkeeper:v1 at github.com/generals-space/crd-ipkeeper/pkg/client/informers
-```
-
-注意: `apimachinery`必须要在GOPATH目录下, 否则在生成过程中可能出现如下报错.
-
-```
-Generating deepcopy funcs
-F0421 10:09:13.896524   30295 deepcopy.go:885] Hit an unsupported type invalid type for invalid type, from github.com/generals-space/crd-ipkeeper/pkg/apis/ipkeeper/v1.StaticIPs
 ```
 
 生成完成后, 对`StaticIPs{}`及`StaticIPsList{}`的成员进行修改就不再需要重新生成了.

@@ -19,8 +19,6 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-
 	ipkeeperv1 "github.com/generals-space/crd-ipkeeper/pkg/apis/ipkeeper/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -41,7 +39,7 @@ var staticipsesResource = schema.GroupVersionResource{Group: "ipkeeper.generals.
 var staticipsesKind = schema.GroupVersionKind{Group: "ipkeeper.generals.space", Version: "v1", Kind: "StaticIPs"}
 
 // Get takes name of the staticIPs, and returns the corresponding staticIPs object, and an error if there is any.
-func (c *FakeStaticIPses) Get(ctx context.Context, name string, options v1.GetOptions) (result *ipkeeperv1.StaticIPs, err error) {
+func (c *FakeStaticIPses) Get(name string, options v1.GetOptions) (result *ipkeeperv1.StaticIPs, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(staticipsesResource, c.ns, name), &ipkeeperv1.StaticIPs{})
 
@@ -52,7 +50,7 @@ func (c *FakeStaticIPses) Get(ctx context.Context, name string, options v1.GetOp
 }
 
 // List takes label and field selectors, and returns the list of StaticIPses that match those selectors.
-func (c *FakeStaticIPses) List(ctx context.Context, opts v1.ListOptions) (result *ipkeeperv1.StaticIPsList, err error) {
+func (c *FakeStaticIPses) List(opts v1.ListOptions) (result *ipkeeperv1.StaticIPsList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(staticipsesResource, staticipsesKind, c.ns, opts), &ipkeeperv1.StaticIPsList{})
 
@@ -74,14 +72,14 @@ func (c *FakeStaticIPses) List(ctx context.Context, opts v1.ListOptions) (result
 }
 
 // Watch returns a watch.Interface that watches the requested staticIPses.
-func (c *FakeStaticIPses) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeStaticIPses) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(staticipsesResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a staticIPs and creates it.  Returns the server's representation of the staticIPs, and an error, if there is any.
-func (c *FakeStaticIPses) Create(ctx context.Context, staticIPs *ipkeeperv1.StaticIPs, opts v1.CreateOptions) (result *ipkeeperv1.StaticIPs, err error) {
+func (c *FakeStaticIPses) Create(staticIPs *ipkeeperv1.StaticIPs) (result *ipkeeperv1.StaticIPs, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(staticipsesResource, c.ns, staticIPs), &ipkeeperv1.StaticIPs{})
 
@@ -92,7 +90,7 @@ func (c *FakeStaticIPses) Create(ctx context.Context, staticIPs *ipkeeperv1.Stat
 }
 
 // Update takes the representation of a staticIPs and updates it. Returns the server's representation of the staticIPs, and an error, if there is any.
-func (c *FakeStaticIPses) Update(ctx context.Context, staticIPs *ipkeeperv1.StaticIPs, opts v1.UpdateOptions) (result *ipkeeperv1.StaticIPs, err error) {
+func (c *FakeStaticIPses) Update(staticIPs *ipkeeperv1.StaticIPs) (result *ipkeeperv1.StaticIPs, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(staticipsesResource, c.ns, staticIPs), &ipkeeperv1.StaticIPs{})
 
@@ -104,7 +102,7 @@ func (c *FakeStaticIPses) Update(ctx context.Context, staticIPs *ipkeeperv1.Stat
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeStaticIPses) UpdateStatus(ctx context.Context, staticIPs *ipkeeperv1.StaticIPs, opts v1.UpdateOptions) (*ipkeeperv1.StaticIPs, error) {
+func (c *FakeStaticIPses) UpdateStatus(staticIPs *ipkeeperv1.StaticIPs) (*ipkeeperv1.StaticIPs, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceAction(staticipsesResource, "status", c.ns, staticIPs), &ipkeeperv1.StaticIPs{})
 
@@ -115,7 +113,7 @@ func (c *FakeStaticIPses) UpdateStatus(ctx context.Context, staticIPs *ipkeeperv
 }
 
 // Delete takes name of the staticIPs and deletes it. Returns an error if one occurs.
-func (c *FakeStaticIPses) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
+func (c *FakeStaticIPses) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(staticipsesResource, c.ns, name), &ipkeeperv1.StaticIPs{})
 
@@ -123,15 +121,15 @@ func (c *FakeStaticIPses) Delete(ctx context.Context, name string, opts v1.Delet
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeStaticIPses) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(staticipsesResource, c.ns, listOpts)
+func (c *FakeStaticIPses) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(staticipsesResource, c.ns, listOptions)
 
 	_, err := c.Fake.Invokes(action, &ipkeeperv1.StaticIPsList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched staticIPs.
-func (c *FakeStaticIPses) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *ipkeeperv1.StaticIPs, err error) {
+func (c *FakeStaticIPses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *ipkeeperv1.StaticIPs, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(staticipsesResource, c.ns, name, pt, data, subresources...), &ipkeeperv1.StaticIPs{})
 

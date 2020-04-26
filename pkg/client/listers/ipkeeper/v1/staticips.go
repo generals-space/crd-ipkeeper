@@ -26,10 +26,8 @@ import (
 )
 
 // StaticIPsLister helps list StaticIPses.
-// All objects returned here must be treated as read-only.
 type StaticIPsLister interface {
 	// List lists all StaticIPses in the indexer.
-	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.StaticIPs, err error)
 	// StaticIPses returns an object that can list and get StaticIPses.
 	StaticIPses(namespace string) StaticIPsNamespaceLister
@@ -60,13 +58,10 @@ func (s *staticIPsLister) StaticIPses(namespace string) StaticIPsNamespaceLister
 }
 
 // StaticIPsNamespaceLister helps list and get StaticIPses.
-// All objects returned here must be treated as read-only.
 type StaticIPsNamespaceLister interface {
 	// List lists all StaticIPses in the indexer for a given namespace.
-	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1.StaticIPs, err error)
 	// Get retrieves the StaticIPs from the indexer for a given namespace and name.
-	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1.StaticIPs, error)
 	StaticIPsNamespaceListerExpansion
 }

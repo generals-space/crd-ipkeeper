@@ -19,7 +19,6 @@ limitations under the License.
 package v1
 
 import (
-	"context"
 	time "time"
 
 	ipkeeperv1 "github.com/generals-space/crd-ipkeeper/pkg/apis/ipkeeper/v1"
@@ -62,13 +61,13 @@ func NewFilteredStaticIPsInformer(client versioned.Interface, namespace string, 
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.IpkeeperV1().StaticIPses(namespace).List(context.TODO(), options)
+				return client.IpkeeperV1().StaticIPses(namespace).List(options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.IpkeeperV1().StaticIPses(namespace).Watch(context.TODO(), options)
+				return client.IpkeeperV1().StaticIPses(namespace).Watch(options)
 			},
 		},
 		&ipkeeperv1.StaticIPs{},

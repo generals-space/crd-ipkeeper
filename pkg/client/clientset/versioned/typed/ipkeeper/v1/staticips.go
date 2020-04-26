@@ -19,7 +19,6 @@ limitations under the License.
 package v1
 
 import (
-	"context"
 	"time"
 
 	v1 "github.com/generals-space/crd-ipkeeper/pkg/apis/ipkeeper/v1"
@@ -38,15 +37,15 @@ type StaticIPsesGetter interface {
 
 // StaticIPsInterface has methods to work with StaticIPs resources.
 type StaticIPsInterface interface {
-	Create(ctx context.Context, staticIPs *v1.StaticIPs, opts metav1.CreateOptions) (*v1.StaticIPs, error)
-	Update(ctx context.Context, staticIPs *v1.StaticIPs, opts metav1.UpdateOptions) (*v1.StaticIPs, error)
-	UpdateStatus(ctx context.Context, staticIPs *v1.StaticIPs, opts metav1.UpdateOptions) (*v1.StaticIPs, error)
-	Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error
-	DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error
-	Get(ctx context.Context, name string, opts metav1.GetOptions) (*v1.StaticIPs, error)
-	List(ctx context.Context, opts metav1.ListOptions) (*v1.StaticIPsList, error)
-	Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.StaticIPs, err error)
+	Create(*v1.StaticIPs) (*v1.StaticIPs, error)
+	Update(*v1.StaticIPs) (*v1.StaticIPs, error)
+	UpdateStatus(*v1.StaticIPs) (*v1.StaticIPs, error)
+	Delete(name string, options *metav1.DeleteOptions) error
+	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
+	Get(name string, options metav1.GetOptions) (*v1.StaticIPs, error)
+	List(opts metav1.ListOptions) (*v1.StaticIPsList, error)
+	Watch(opts metav1.ListOptions) (watch.Interface, error)
+	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.StaticIPs, err error)
 	StaticIPsExpansion
 }
 
@@ -65,20 +64,20 @@ func newStaticIPses(c *IpkeeperV1Client, namespace string) *staticIPses {
 }
 
 // Get takes name of the staticIPs, and returns the corresponding staticIPs object, and an error if there is any.
-func (c *staticIPses) Get(ctx context.Context, name string, options metav1.GetOptions) (result *v1.StaticIPs, err error) {
+func (c *staticIPses) Get(name string, options metav1.GetOptions) (result *v1.StaticIPs, err error) {
 	result = &v1.StaticIPs{}
 	err = c.client.Get().
 		Namespace(c.ns).
 		Resource("staticipses").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
+		Do().
 		Into(result)
 	return
 }
 
 // List takes label and field selectors, and returns the list of StaticIPses that match those selectors.
-func (c *staticIPses) List(ctx context.Context, opts metav1.ListOptions) (result *v1.StaticIPsList, err error) {
+func (c *staticIPses) List(opts metav1.ListOptions) (result *v1.StaticIPsList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -89,13 +88,13 @@ func (c *staticIPses) List(ctx context.Context, opts metav1.ListOptions) (result
 		Resource("staticipses").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Do(ctx).
+		Do().
 		Into(result)
 	return
 }
 
 // Watch returns a watch.Interface that watches the requested staticIPses.
-func (c *staticIPses) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
+func (c *staticIPses) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -106,90 +105,87 @@ func (c *staticIPses) Watch(ctx context.Context, opts metav1.ListOptions) (watch
 		Resource("staticipses").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
-		Watch(ctx)
+		Watch()
 }
 
 // Create takes the representation of a staticIPs and creates it.  Returns the server's representation of the staticIPs, and an error, if there is any.
-func (c *staticIPses) Create(ctx context.Context, staticIPs *v1.StaticIPs, opts metav1.CreateOptions) (result *v1.StaticIPs, err error) {
+func (c *staticIPses) Create(staticIPs *v1.StaticIPs) (result *v1.StaticIPs, err error) {
 	result = &v1.StaticIPs{}
 	err = c.client.Post().
 		Namespace(c.ns).
 		Resource("staticipses").
-		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(staticIPs).
-		Do(ctx).
+		Do().
 		Into(result)
 	return
 }
 
 // Update takes the representation of a staticIPs and updates it. Returns the server's representation of the staticIPs, and an error, if there is any.
-func (c *staticIPses) Update(ctx context.Context, staticIPs *v1.StaticIPs, opts metav1.UpdateOptions) (result *v1.StaticIPs, err error) {
+func (c *staticIPses) Update(staticIPs *v1.StaticIPs) (result *v1.StaticIPs, err error) {
 	result = &v1.StaticIPs{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("staticipses").
 		Name(staticIPs.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(staticIPs).
-		Do(ctx).
+		Do().
 		Into(result)
 	return
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *staticIPses) UpdateStatus(ctx context.Context, staticIPs *v1.StaticIPs, opts metav1.UpdateOptions) (result *v1.StaticIPs, err error) {
+
+func (c *staticIPses) UpdateStatus(staticIPs *v1.StaticIPs) (result *v1.StaticIPs, err error) {
 	result = &v1.StaticIPs{}
 	err = c.client.Put().
 		Namespace(c.ns).
 		Resource("staticipses").
 		Name(staticIPs.Name).
 		SubResource("status").
-		VersionedParams(&opts, scheme.ParameterCodec).
 		Body(staticIPs).
-		Do(ctx).
+		Do().
 		Into(result)
 	return
 }
 
 // Delete takes name of the staticIPs and deletes it. Returns an error if one occurs.
-func (c *staticIPses) Delete(ctx context.Context, name string, opts metav1.DeleteOptions) error {
+func (c *staticIPses) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("staticipses").
 		Name(name).
-		Body(&opts).
-		Do(ctx).
+		Body(options).
+		Do().
 		Error()
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *staticIPses) DeleteCollection(ctx context.Context, opts metav1.DeleteOptions, listOpts metav1.ListOptions) error {
+func (c *staticIPses) DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
 	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
+	if listOptions.TimeoutSeconds != nil {
+		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
 		Namespace(c.ns).
 		Resource("staticipses").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
+		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
+		Body(options).
+		Do().
 		Error()
 }
 
 // Patch applies the patch and returns the patched staticIPs.
-func (c *staticIPses) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (result *v1.StaticIPs, err error) {
+func (c *staticIPses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.StaticIPs, err error) {
 	result = &v1.StaticIPs{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
 		Resource("staticipses").
-		Name(name).
 		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
+		Name(name).
 		Body(data).
-		Do(ctx).
+		Do().
 		Into(result)
 	return
 }
