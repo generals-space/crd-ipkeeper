@@ -10,15 +10,17 @@ kind: ClusterRole
 metadata:
   name: crd-ipkeeper
 rules:
-- apiGroups:
-  - ""
-  - extensions
-  resources:
-  - pods
-  verbs:
-  - get
-  - list
-  - watch
+- apiGroups: [""]
+  ## configmap用于创建分布式资源锁
+  resources: ["pods", "configmaps"]
+  verbs: ["get", "list", "watch", "create", "patch", "update"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["ipkeeper.generals.space"]
+  ## 自定义类型资源也需要通过 rbac 赋予权限.
+  resources: ["staticipses"]
+  verbs: ["get", "list", "watch", "create", "patch", "update"]
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -33,6 +35,23 @@ subjects:
 - kind: ServiceAccount
   name: crd-ipkeeper
   namespace: kube-system
+  
+---
+## 由于 crd-ipkeeper 会监听 deployment/daemonset 等, 
+## 然后可能创建并修改 StaticIPs 资源, 所以必须要事先创建 CRD, 
+## 同时在 RBAC 配置中添加上对 staticipses 类型资源的访问权限
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  ## metadata.name = plural值 + group值
+  name: staticipses.ipkeeper.generals.space
+spec:
+  group: ipkeeper.generals.space
+  version: v1
+  names:
+    kind: StaticIPs
+    plural: staticipses
+  scope: Namespaced
 
 ---
 kind: DaemonSet
@@ -59,11 +78,20 @@ spec:
       hostPID: true
       containers:
       - name: crd-ipkeeper
-        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.9
+        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.25
         securityContext:
           privileged: true
           capabilities:
             add: ["NET_ADMIN", "SYS_PTRACE", "SYS_ADMIN"]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NS
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
         volumeMounts:
         - mountPath: /var/run
           name: socket
@@ -76,4 +104,3 @@ spec:
       - name: host-netns
         hostPath:
           path: /var/run/netns
-

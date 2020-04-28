@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  ## deploy 生成的 pod 的名称也是 devops-deploy-xxx
+  name: devops-deploy
+  labels:
+    app: devops-deploy
+  annotations:
+    ipkeeper.generals.space/ip_pool: 172.16.91.141/24
+    ipkeeper.generals.space/gateway: 172.16.91.2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      ## 这里的 label 是与下面的 template -> metadata -> label 匹配的,
+      ## 表示一种管理关系
+      app: devops-pod
+  template:
+    metadata:
+      labels:
+        app: devops-pod
+    spec:
+      containers:
+      - name: devops
+        image: registry.cn-hangzhou.aliyuncs.com/generals-space/centos7:devops
+        command: ["tail", "-f", "/etc/os-release"]
+        securityContext:
+          capabilities:
+            add: ["NET_ADMIN"]
+      ## 允许在master节点部署
+      tolerations:
+        ## 这一段表示pod需要容忍拥有master角色的node们,
+        ## 且这个污点的效果是 NoSchedule.
+        ## 因为key, operator, value, effect可以唯一确定一个污点对象(Taint).
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
