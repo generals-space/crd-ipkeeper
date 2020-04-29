@@ -78,7 +78,7 @@ spec:
       hostPID: true
       containers:
       - name: crd-ipkeeper
-        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.25
+        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.26
         securityContext:
           privileged: true
           capabilities:

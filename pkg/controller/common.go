@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	apimmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,5 +37,14 @@ func newSIP(ownerKind string, obj interface{}) (err error) {
 		},
 	}
 	fmt.Printf("sip %+v\n", sip)
+	return
+}
+
+// initIPMap 创建 IP 与 Pod 的映射表
+func (c *Controller) initIPMap(ipPoolAnnotation string) (ipMap map[string]*ipkv1.OwnerPod) {
+	ipMap = map[string]*ipkv1.OwnerPod{}
+	for _, v := range strings.Split(ipPoolAnnotation, ",") {
+		ipMap[v] = nil
+	}
 	return
 }

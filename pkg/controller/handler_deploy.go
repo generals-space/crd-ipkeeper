@@ -140,6 +140,9 @@ func (c *Controller) handleAddDeploy(key string) (err error) {
 		Spec: ipkv1.StaticIPsSpec{
 			Namespace: deploy.Namespace,
 			OwnerKind: sipOwnerKind,
+			IPPool: deploy.Annotations[util.IPPoolAnnotation],
+			Gateway: deploy.Annotations[util.GatewayAnnotation],
+			IPMap: c.initIPMap(deploy.Annotations[util.IPPoolAnnotation]),
 		},
 	}
 	klog.V(3).Infof("new sip ojbect: %+v", sip)

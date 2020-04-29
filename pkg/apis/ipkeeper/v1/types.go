@@ -23,6 +23,20 @@ type StaticIPs struct {
 type StaticIPsSpec struct {
 	Namespace string `json:"namespace"`
 	OwnerKind string `json:"ownerKind"`
+	// 格式可为 "192.168.1.1/24,192.168.1.2/24"
+	IPPool  string `json:"ipPool"`
+	Gateway string `json:"gateway"`
+
+	// IPMap key 为 192.168.1.1/24 这种点分十进制字符串
+	// val 为 OwnerPod 对象, 表示此 IP 的拥有者
+	IPMap map[string]*OwnerPod `json:"ipmap"`
+}
+
+// OwnerPod ...
+type OwnerPod struct {
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
+	UID       string `json:"uid"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
