@@ -47,6 +47,7 @@ type Controller struct {
 	// queue 的主要作用就是限流, 接收与处理是分为两个部分单独完成的.
 	addSIPQueue    cgworkqueue.RateLimitingInterface
 	addDeployQueue cgworkqueue.RateLimitingInterface
+	delDeployQueue cgworkqueue.RateLimitingInterface
 	recorder       cgrecord.EventRecorder
 
 	electionID string
@@ -113,6 +114,10 @@ func NewController(
 			cgworkqueue.DefaultControllerRateLimiter(),
 			"AddDeploy",
 		),
+		delDeployQueue: cgworkqueue.NewNamedRateLimitingQueue(
+			cgworkqueue.DefaultControllerRateLimiter(),
+			"DelDeploy",
+		),
 		recorder:   makeRecorder(kubeClient),
 		electionID: "crd-ipkeeper",
 	}
@@ -166,6 +171,9 @@ func (c *Controller) run(ctx context.Context) {
 	// 调用 controller 中的各个 worker 处理各自资源队列中的事件变动.
 	klog.Info("Starting workers")
 	go utilwait.Until(c.runAddDeployWorker, time.Second, c.stopCh)
+	// 貌似因为设置了 Owner, 所以当 deploy 被移除的时候, 被绑定的 StaticIP 也会被移除.
+	// 不需要额外的 del 操作.
+	// go utilwait.Until(c.runDelDeployWorker, time.Second, c.stopCh)
 
 	klog.Info("Started workers")
 	<-c.stopCh
