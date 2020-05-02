@@ -28,8 +28,8 @@ type FakeIpkeeperV1 struct {
 	*testing.Fake
 }
 
-func (c *FakeIpkeeperV1) StaticIPses(namespace string) v1.StaticIPsInterface {
-	return &FakeStaticIPses{c, namespace}
+func (c *FakeIpkeeperV1) StaticIPs(namespace string) v1.StaticIPInterface {
+	return &FakeStaticIPs{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

@@ -18,10 +18,10 @@ limitations under the License.
 
 package v1
 
-// StaticIPsListerExpansion allows custom methods to be added to
-// StaticIPsLister.
-type StaticIPsListerExpansion interface{}
+// StaticIPListerExpansion allows custom methods to be added to
+// StaticIPLister.
+type StaticIPListerExpansion interface{}
 
-// StaticIPsNamespaceListerExpansion allows custom methods to be added to
-// StaticIPsNamespaceLister.
-type StaticIPsNamespaceListerExpansion interface{}
+// StaticIPNamespaceListerExpansion allows custom methods to be added to
+// StaticIPNamespaceLister.
+type StaticIPNamespaceListerExpansion interface{}

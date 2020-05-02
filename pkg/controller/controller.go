@@ -41,7 +41,7 @@ type Controller struct {
 	deployLister cglistersappsv1.DeploymentLister
 	deploySynced cgcache.InformerSynced
 
-	sipLister crdLister.StaticIPsLister
+	sipLister crdLister.StaticIPLister
 	sipSynced cgcache.InformerSynced
 
 	// queue 的主要作用就是限流, 接收与处理是分为两个部分单独完成的.
@@ -87,7 +87,7 @@ func NewController(
 		crdClient, time.Second*30,
 	)
 	deployInformer := kubeInformerFactory.Apps().V1().Deployments()
-	sipInformer := crdInformerFactory.Ipkeeper().V1().StaticIPses()
+	sipInformer := crdInformerFactory.Ipkeeper().V1().StaticIPs()
 
 	controller = &Controller{
 		CrdPodName: os.Getenv("POD_NAME"),

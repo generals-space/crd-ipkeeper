@@ -19,7 +19,7 @@ func newSIP(ownerKind string, obj interface{}) (err error) {
 	////////////////////////////
 	sipOwnerKind := "deploy"
 	sipName := fmt.Sprintf("%s-%s-%s", deploy.Namespace, sipOwnerKind, deploy.Name)
-	sip := &ipkv1.StaticIPs{
+	sip := &ipkv1.StaticIP{
 		ObjectMeta: apimmetav1.ObjectMeta{
 			Name:      sipName,
 			Namespace: deploy.Namespace,
@@ -31,7 +31,7 @@ func newSIP(ownerKind string, obj interface{}) (err error) {
 				),
 			},
 		},
-		Spec: ipkv1.StaticIPsSpec{
+		Spec: ipkv1.StaticIPSpec{
 			Namespace: deploy.Namespace,
 			OwnerKind: sipOwnerKind,
 		},

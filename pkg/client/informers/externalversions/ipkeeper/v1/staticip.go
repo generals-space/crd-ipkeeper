@@ -31,59 +31,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// StaticIPsInformer provides access to a shared informer and lister for
-// StaticIPses.
-type StaticIPsInformer interface {
+// StaticIPInformer provides access to a shared informer and lister for
+// StaticIPs.
+type StaticIPInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1.StaticIPsLister
+	Lister() v1.StaticIPLister
 }
 
-type staticIPsInformer struct {
+type staticIPInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewStaticIPsInformer constructs a new informer for StaticIPs type.
+// NewStaticIPInformer constructs a new informer for StaticIP type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewStaticIPsInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredStaticIPsInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewStaticIPInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredStaticIPInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredStaticIPsInformer constructs a new informer for StaticIPs type.
+// NewFilteredStaticIPInformer constructs a new informer for StaticIP type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredStaticIPsInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredStaticIPInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.IpkeeperV1().StaticIPses(namespace).List(options)
+				return client.IpkeeperV1().StaticIPs(namespace).List(options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.IpkeeperV1().StaticIPses(namespace).Watch(options)
+				return client.IpkeeperV1().StaticIPs(namespace).Watch(options)
 			},
 		},
-		&ipkeeperv1.StaticIPs{},
+		&ipkeeperv1.StaticIP{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *staticIPsInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredStaticIPsInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *staticIPInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredStaticIPInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *staticIPsInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&ipkeeperv1.StaticIPs{}, f.defaultInformer)
+func (f *staticIPInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&ipkeeperv1.StaticIP{}, f.defaultInformer)
 }
 
-func (f *staticIPsInformer) Lister() v1.StaticIPsLister {
-	return v1.NewStaticIPsLister(f.Informer().GetIndexer())
+func (f *staticIPInformer) Lister() v1.StaticIPLister {
+	return v1.NewStaticIPLister(f.Informer().GetIndexer())
 }

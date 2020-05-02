@@ -19,7 +19,7 @@ rules:
   verbs: ["get", "list", "watch"]
 - apiGroups: ["ipkeeper.generals.space"]
   ## 自定义类型资源也需要通过 rbac 赋予权限.
-  resources: ["staticipses"]
+  resources: ["staticips"]
   verbs: ["get", "list", "watch", "create", "patch", "update"]
 
 ---
@@ -38,19 +38,19 @@ subjects:
   
 ---
 ## 由于 crd-ipkeeper 会监听 deployment/daemonset 等, 
-## 然后可能创建并修改 StaticIPs 资源, 所以必须要事先创建 CRD, 
-## 同时在 RBAC 配置中添加上对 staticipses 类型资源的访问权限
+## 然后可能创建并修改 StaticIP 资源, 所以必须要事先创建 CRD, 
+## 同时在 RBAC 配置中添加上对 staticips 类型资源的访问权限
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   ## metadata.name = plural值 + group值
-  name: staticipses.ipkeeper.generals.space
+  name: staticips.ipkeeper.generals.space
 spec:
   group: ipkeeper.generals.space
   version: v1
   names:
-    kind: StaticIPs
-    plural: staticipses
+    kind: StaticIP
+    plural: staticips
   scope: Namespaced
 
 ---
@@ -78,7 +78,7 @@ spec:
       hostPID: true
       containers:
       - name: crd-ipkeeper
-        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.26
+        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.27
         securityContext:
           privileged: true
           capabilities:

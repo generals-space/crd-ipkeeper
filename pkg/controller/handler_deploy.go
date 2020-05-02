@@ -122,7 +122,7 @@ func (c *Controller) handleAddDeploy(key string) (err error) {
 	sipName := fmt.Sprintf("%s-%s-%s", deploy.Namespace, sipOwnerKind, deploy.Name)
 	klog.Infof("try to create new sip: %s", sipName)
 
-	sip := &ipkv1.StaticIPs{
+	sip := &ipkv1.StaticIP{
 		ObjectMeta: apimmetav1.ObjectMeta{
 			Name:      sipName,
 			Namespace: deploy.Namespace,
@@ -137,7 +137,7 @@ func (c *Controller) handleAddDeploy(key string) (err error) {
 				),
 			},
 		},
-		Spec: ipkv1.StaticIPsSpec{
+		Spec: ipkv1.StaticIPSpec{
 			Namespace: deploy.Namespace,
 			OwnerKind: sipOwnerKind,
 			IPPool: deploy.Annotations[util.IPPoolAnnotation],
@@ -146,7 +146,7 @@ func (c *Controller) handleAddDeploy(key string) (err error) {
 		},
 	}
 	klog.V(3).Infof("new sip ojbect: %+v", sip)
-	actualSIP, err := c.crdClient.IpkeeperV1().StaticIPses(deploy.Namespace).Create(sip)
+	actualSIP, err := c.crdClient.IpkeeperV1().StaticIPs(deploy.Namespace).Create(sip)
 	if err != nil {
 		klog.Fatal("failed to create new sip for deploy %s: %s", deploy.Namespace, err)
 		utilruntime.HandleError(err)

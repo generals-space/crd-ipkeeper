@@ -7,20 +7,20 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// StaticIPs describes a StaticIPs resource
-type StaticIPs struct {
+// StaticIP describes a StaticIP resource
+type StaticIP struct {
 	// TypeMeta为各资源通用元信息, 包括kind和apiVersion.
 	metav1.TypeMeta `json:",inline"`
 	// ObjectMeta为特定类型的元信息, 包括name, namespace, selfLink, labels等.
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	// spec字段
-	Spec StaticIPsSpec `json:"spec"`
+	Spec StaticIPSpec `json:"spec"`
 	// status字段
-	Status StaticIPsStatus `json:"status"`
+	Status StaticIPStatus `json:"status"`
 }
 
-// StaticIPsSpec is the spec for a MyResource resource
-type StaticIPsSpec struct {
+// StaticIPSpec is the spec for a MyResource resource
+type StaticIPSpec struct {
 	Namespace string `json:"namespace"`
 	OwnerKind string `json:"ownerKind"`
 	// 格式可为 "192.168.1.1/24,192.168.1.2/24"
@@ -41,13 +41,13 @@ type OwnerPod struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// StaticIPsList is a list of StaticIPs resources
-type StaticIPsList struct {
+// StaticIPList is a list of StaticIP resources
+type StaticIPList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []StaticIPs `json:"items"`
+	Items []StaticIP `json:"items"`
 }
 
-// StaticIPsStatus is the status for a StaticIPsStatus resource
-type StaticIPsStatus struct{}
+// StaticIPStatus is the status for a StaticIPStatus resource
+type StaticIPStatus struct{}

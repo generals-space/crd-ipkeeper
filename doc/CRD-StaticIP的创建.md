@@ -1,4 +1,4 @@
-# CRD-StaticIPs的创建
+# CRD-StaticIP的创建
 
 首先创建这些基础文件, 文件内容除了具体的结构体成员, group, version这些字段可以修改外, 其他的像`import`的内容, `+genclient`和`+k8s`这种编译标记, 都保持不变.
 
@@ -9,10 +9,10 @@ touch pkg/apis/ipkeeper/v1/register.go
 touch pkg/apis/ipkeeper/v1/types.go
 ```
 
-在未进行下一步时, `register.go`中的`addKnownTypes()`, `&StaticIPs{}`和`&StaticIPsList{}`结构会出现红色下划线, 显示如下
+在未进行下一步时, `register.go`中的`addKnownTypes()`, `&StaticIP{}`和`&StaticIPList{}`结构会出现红色下划线, 显示如下
 
 ```
-cannot use &(StaticIPsList literal) (value of type *StaticIPsList) as runtime.Object value in argument to scheme.AddKnownTypes: missing method DeepCopyObject
+cannot use &(StaticIPList literal) (value of type *StaticIPList) as runtime.Object value in argument to scheme.AddKnownTypes: missing method DeepCopyObject
 ```
 
 接下来使用`code-generator`项目生成代码, 需要`code-generator`和`apimachinery`两个项目在`GOPATH`目录下.
@@ -38,7 +38,7 @@ cd ..
 
 ```
 Generating deepcopy funcs
-F0421 10:09:13.896524   30295 deepcopy.go:885] Hit an unsupported type invalid type for invalid type, from github.com/generals-space/crd-ipkeeper/pkg/apis/ipkeeper/v1.StaticIPs
+F0421 10:09:13.896524   30295 deepcopy.go:885] Hit an unsupported type invalid type for invalid type, from github.com/generals-space/crd-ipkeeper/pkg/apis/ipkeeper/v1.StaticIP
 ```
 
 ------
@@ -55,4 +55,4 @@ Generating listers for ipkeeper:v1 at github.com/generals-space/crd-ipkeeper/pkg
 Generating informers for ipkeeper:v1 at github.com/generals-space/crd-ipkeeper/pkg/client/informers
 ```
 
-生成完成后, 对`StaticIPs{}`及`StaticIPsList{}`的成员进行修改就不再需要重新生成了.
+生成完成后, 对`StaticIP{}`及`StaticIPList{}`的成员进行修改就不再需要重新生成了.

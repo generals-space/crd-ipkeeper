@@ -24,8 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// StaticIPses returns a StaticIPsInformer.
-	StaticIPses() StaticIPsInformer
+	// StaticIPs returns a StaticIPInformer.
+	StaticIPs() StaticIPInformer
 }
 
 type version struct {
@@ -39,7 +39,7 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// StaticIPses returns a StaticIPsInformer.
-func (v *version) StaticIPses() StaticIPsInformer {
-	return &staticIPsInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+// StaticIPs returns a StaticIPInformer.
+func (v *version) StaticIPs() StaticIPInformer {
+	return &staticIPInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

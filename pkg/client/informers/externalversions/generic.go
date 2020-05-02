@@ -53,8 +53,8 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=ipkeeper.generals.space, Version=v1
-	case v1.SchemeGroupVersion.WithResource("staticipses"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Ipkeeper().V1().StaticIPses().Informer()}, nil
+	case v1.SchemeGroupVersion.WithResource("staticips"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Ipkeeper().V1().StaticIPs().Informer()}, nil
 
 	}
 

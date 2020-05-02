@@ -26,7 +26,7 @@ import (
 
 type IpkeeperV1Interface interface {
 	RESTClient() rest.Interface
-	StaticIPsesGetter
+	StaticIPsGetter
 }
 
 // IpkeeperV1Client is used to interact with features provided by the ipkeeper.generals.space group.
@@ -34,8 +34,8 @@ type IpkeeperV1Client struct {
 	restClient rest.Interface
 }
 
-func (c *IpkeeperV1Client) StaticIPses(namespace string) StaticIPsInterface {
-	return newStaticIPses(c, namespace)
+func (c *IpkeeperV1Client) StaticIPs(namespace string) StaticIPInterface {
+	return newStaticIPs(c, namespace)
 }
 
 // NewForConfig creates a new IpkeeperV1Client for the given config.

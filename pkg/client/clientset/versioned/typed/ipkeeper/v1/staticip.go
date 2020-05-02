@@ -29,46 +29,46 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-// StaticIPsesGetter has a method to return a StaticIPsInterface.
+// StaticIPsGetter has a method to return a StaticIPInterface.
 // A group's client should implement this interface.
-type StaticIPsesGetter interface {
-	StaticIPses(namespace string) StaticIPsInterface
+type StaticIPsGetter interface {
+	StaticIPs(namespace string) StaticIPInterface
 }
 
-// StaticIPsInterface has methods to work with StaticIPs resources.
-type StaticIPsInterface interface {
-	Create(*v1.StaticIPs) (*v1.StaticIPs, error)
-	Update(*v1.StaticIPs) (*v1.StaticIPs, error)
-	UpdateStatus(*v1.StaticIPs) (*v1.StaticIPs, error)
+// StaticIPInterface has methods to work with StaticIP resources.
+type StaticIPInterface interface {
+	Create(*v1.StaticIP) (*v1.StaticIP, error)
+	Update(*v1.StaticIP) (*v1.StaticIP, error)
+	UpdateStatus(*v1.StaticIP) (*v1.StaticIP, error)
 	Delete(name string, options *metav1.DeleteOptions) error
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
-	Get(name string, options metav1.GetOptions) (*v1.StaticIPs, error)
-	List(opts metav1.ListOptions) (*v1.StaticIPsList, error)
+	Get(name string, options metav1.GetOptions) (*v1.StaticIP, error)
+	List(opts metav1.ListOptions) (*v1.StaticIPList, error)
 	Watch(opts metav1.ListOptions) (watch.Interface, error)
-	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.StaticIPs, err error)
-	StaticIPsExpansion
+	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.StaticIP, err error)
+	StaticIPExpansion
 }
 
-// staticIPses implements StaticIPsInterface
-type staticIPses struct {
+// staticIPs implements StaticIPInterface
+type staticIPs struct {
 	client rest.Interface
 	ns     string
 }
 
-// newStaticIPses returns a StaticIPses
-func newStaticIPses(c *IpkeeperV1Client, namespace string) *staticIPses {
-	return &staticIPses{
+// newStaticIPs returns a StaticIPs
+func newStaticIPs(c *IpkeeperV1Client, namespace string) *staticIPs {
+	return &staticIPs{
 		client: c.RESTClient(),
 		ns:     namespace,
 	}
 }
 
-// Get takes name of the staticIPs, and returns the corresponding staticIPs object, and an error if there is any.
-func (c *staticIPses) Get(name string, options metav1.GetOptions) (result *v1.StaticIPs, err error) {
-	result = &v1.StaticIPs{}
+// Get takes name of the staticIP, and returns the corresponding staticIP object, and an error if there is any.
+func (c *staticIPs) Get(name string, options metav1.GetOptions) (result *v1.StaticIP, err error) {
+	result = &v1.StaticIP{}
 	err = c.client.Get().
 		Namespace(c.ns).
-		Resource("staticipses").
+		Resource("staticips").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
 		Do().
@@ -76,16 +76,16 @@ func (c *staticIPses) Get(name string, options metav1.GetOptions) (result *v1.St
 	return
 }
 
-// List takes label and field selectors, and returns the list of StaticIPses that match those selectors.
-func (c *staticIPses) List(opts metav1.ListOptions) (result *v1.StaticIPsList, err error) {
+// List takes label and field selectors, and returns the list of StaticIPs that match those selectors.
+func (c *staticIPs) List(opts metav1.ListOptions) (result *v1.StaticIPList, err error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
-	result = &v1.StaticIPsList{}
+	result = &v1.StaticIPList{}
 	err = c.client.Get().
 		Namespace(c.ns).
-		Resource("staticipses").
+		Resource("staticips").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Do().
@@ -93,8 +93,8 @@ func (c *staticIPses) List(opts metav1.ListOptions) (result *v1.StaticIPsList, e
 	return
 }
 
-// Watch returns a watch.Interface that watches the requested staticIPses.
-func (c *staticIPses) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+// Watch returns a watch.Interface that watches the requested staticIPs.
+func (c *staticIPs) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -102,32 +102,32 @@ func (c *staticIPses) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	opts.Watch = true
 	return c.client.Get().
 		Namespace(c.ns).
-		Resource("staticipses").
+		Resource("staticips").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
 		Watch()
 }
 
-// Create takes the representation of a staticIPs and creates it.  Returns the server's representation of the staticIPs, and an error, if there is any.
-func (c *staticIPses) Create(staticIPs *v1.StaticIPs) (result *v1.StaticIPs, err error) {
-	result = &v1.StaticIPs{}
+// Create takes the representation of a staticIP and creates it.  Returns the server's representation of the staticIP, and an error, if there is any.
+func (c *staticIPs) Create(staticIP *v1.StaticIP) (result *v1.StaticIP, err error) {
+	result = &v1.StaticIP{}
 	err = c.client.Post().
 		Namespace(c.ns).
-		Resource("staticipses").
-		Body(staticIPs).
+		Resource("staticips").
+		Body(staticIP).
 		Do().
 		Into(result)
 	return
 }
 
-// Update takes the representation of a staticIPs and updates it. Returns the server's representation of the staticIPs, and an error, if there is any.
-func (c *staticIPses) Update(staticIPs *v1.StaticIPs) (result *v1.StaticIPs, err error) {
-	result = &v1.StaticIPs{}
+// Update takes the representation of a staticIP and updates it. Returns the server's representation of the staticIP, and an error, if there is any.
+func (c *staticIPs) Update(staticIP *v1.StaticIP) (result *v1.StaticIP, err error) {
+	result = &v1.StaticIP{}
 	err = c.client.Put().
 		Namespace(c.ns).
-		Resource("staticipses").
-		Name(staticIPs.Name).
-		Body(staticIPs).
+		Resource("staticips").
+		Name(staticIP.Name).
+		Body(staticIP).
 		Do().
 		Into(result)
 	return
@@ -136,24 +136,24 @@ func (c *staticIPses) Update(staticIPs *v1.StaticIPs) (result *v1.StaticIPs, err
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
 
-func (c *staticIPses) UpdateStatus(staticIPs *v1.StaticIPs) (result *v1.StaticIPs, err error) {
-	result = &v1.StaticIPs{}
+func (c *staticIPs) UpdateStatus(staticIP *v1.StaticIP) (result *v1.StaticIP, err error) {
+	result = &v1.StaticIP{}
 	err = c.client.Put().
 		Namespace(c.ns).
-		Resource("staticipses").
-		Name(staticIPs.Name).
+		Resource("staticips").
+		Name(staticIP.Name).
 		SubResource("status").
-		Body(staticIPs).
+		Body(staticIP).
 		Do().
 		Into(result)
 	return
 }
 
-// Delete takes name of the staticIPs and deletes it. Returns an error if one occurs.
-func (c *staticIPses) Delete(name string, options *metav1.DeleteOptions) error {
+// Delete takes name of the staticIP and deletes it. Returns an error if one occurs.
+func (c *staticIPs) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
 		Namespace(c.ns).
-		Resource("staticipses").
+		Resource("staticips").
 		Name(name).
 		Body(options).
 		Do().
@@ -161,14 +161,14 @@ func (c *staticIPses) Delete(name string, options *metav1.DeleteOptions) error {
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *staticIPses) DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
+func (c *staticIPs) DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
 	var timeout time.Duration
 	if listOptions.TimeoutSeconds != nil {
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
 		Namespace(c.ns).
-		Resource("staticipses").
+		Resource("staticips").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
 		Body(options).
@@ -176,12 +176,12 @@ func (c *staticIPses) DeleteCollection(options *metav1.DeleteOptions, listOption
 		Error()
 }
 
-// Patch applies the patch and returns the patched staticIPs.
-func (c *staticIPses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.StaticIPs, err error) {
-	result = &v1.StaticIPs{}
+// Patch applies the patch and returns the patched staticIP.
+func (c *staticIPs) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.StaticIP, err error) {
+	result = &v1.StaticIP{}
 	err = c.client.Patch(pt).
 		Namespace(c.ns).
-		Resource("staticipses").
+		Resource("staticips").
 		SubResource(subresources...).
 		Name(name).
 		Body(data).
