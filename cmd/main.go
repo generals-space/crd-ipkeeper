@@ -59,6 +59,6 @@ func main() {
 	c, err := controller.NewController(kubeClient, crdClient)
 	go c.Run(stopCh)
 
-	server.NewController(config)
-	server.RunServer(config)
+	cniServer := server.NewCNIServer(config)
+	cniServer.Run()
 }

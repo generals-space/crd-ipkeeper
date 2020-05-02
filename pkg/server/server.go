@@ -1,11 +1,9 @@
 package server
 
 import (
-	"fmt"
 	"net"
 	"net/http"
 	"os"
-	"time"
 
 	restful "github.com/emicklei/go-restful"
 	"k8s.io/klog"
@@ -13,34 +11,38 @@ import (
 	"github.com/generals-space/crd-ipkeeper/pkg/restapi"
 )
 
-var (
-	reqLogString  = "[%s] Incoming %s %s %s request from %s"
-	respLogString = "[%s] Outcoming response to %s %s %s with %d status code in %vms"
-)
-
-// RunServer 启动Unix http服务器.
-func RunServer(cfg *Configuration) {
-	csh, err := newCNIServerHandler(cfg)
-	if err != nil {
-		klog.Fatalf("create cni server handler failed %v", err)
-		return
-	}
-	server := http.Server{
-		Handler: createHandler(csh),
-	}
-	unixListener, err := net.Listen("unix", cfg.BindSocket)
-	if err != nil {
-		klog.Errorf("bind socket to %s failed %v", cfg.BindSocket, err)
-		return
-	}
-	defer os.Remove(cfg.BindSocket)
-
-	klog.Infof("start listen on %s", cfg.BindSocket)
-	klog.Fatal(server.Serve(unixListener))
+// CNIServer ...
+type CNIServer struct {
+	config     *Configuration
+	handler    *CNIServerHandler
+	httpServer *http.Server
 }
 
-// createHandler 挂载 cni server 的 rest api 接口.
-func createHandler(csh *CNIServerHandler) http.Handler {
+// NewCNIServer ...
+func NewCNIServer(config *Configuration) *CNIServer {
+	cniServer := &CNIServer{
+		config:  config,
+		handler: newCNIServerHandler(config),
+	}
+	cniServer.createHandler()
+	return cniServer
+}
+
+// Run 启动Unix http服务器.
+func (s *CNIServer) Run() {
+	unixListener, err := net.Listen("unix", s.config.BindSocket)
+	if err != nil {
+		klog.Errorf("bind socket to %s failed %v", s.config.BindSocket, err)
+		return
+	}
+	defer os.Remove(s.config.BindSocket)
+
+	klog.Infof("start listen on %s", s.config.BindSocket)
+	klog.Fatal(s.httpServer.Serve(unixListener))
+}
+
+// createHandler 挂载 cni server 的 rest api 接口, 实际的处理方法在 s.handler 成员对象中.
+func (s *CNIServer) createHandler() {
 	wsContainer := restful.NewContainer()
 	wsContainer.EnableContentEncoding(true)
 
@@ -49,55 +51,16 @@ func createHandler(csh *CNIServerHandler) http.Handler {
 	wsContainer.Add(ws)
 
 	ws.Route(
-		ws.POST("/add").To(csh.handleAdd).Reads(restapi.PodRequest{}),
+		ws.POST("/add").To(s.handler.handleAdd).Reads(restapi.PodRequest{}),
 	)
 	// 处理Pod移除的事件, 从cni网桥拨出宿主机端的veth等操作.
-	// ...不过我觉得根本没必要, 所以 csh.handleDel() 其实是个空函数.
+	// ...不过我觉得根本没必要, 所以 s.handler.handleDel() 其实是个空函数.
 	ws.Route(
-		ws.POST("/del").To(csh.handleDel).Reads(restapi.PodRequest{}),
+		ws.POST("/del").To(s.handler.handleDel).Reads(restapi.PodRequest{}),
 	)
 
-	ws.Filter(requestAndResponseLogger)
-
-	return wsContainer
-}
-
-// web-service filter function used for request and response logging.
-func requestAndResponseLogger(
-	req *restful.Request,
-	resp *restful.Response,
-	chain *restful.FilterChain,
-) {
-	klog.Infof(formatRequestLog(req))
-	start := time.Now()
-	chain.ProcessFilter(req, resp)
-	elapsed := float64((time.Since(start)) / time.Millisecond)
-	klog.Infof(formatResponseLog(resp, req, elapsed))
-}
-
-// formatRequestLog formats request log string.
-func formatRequestLog(request *restful.Request) string {
-	uri := ""
-	if request.Request.URL != nil {
-		uri = request.Request.URL.RequestURI()
+	s.httpServer = &http.Server{
+		Handler: wsContainer,
 	}
-
-	return fmt.Sprintf(
-		reqLogString,
-		time.Now().Format(time.RFC3339), request.Request.Proto,
-		request.Request.Method, uri, request.Request.RemoteAddr,
-	)
-}
-
-// formatResponseLog formats response log string.
-func formatResponseLog(response *restful.Response, request *restful.Request, reqTime float64) string {
-	uri := ""
-	if request.Request.URL != nil {
-		uri = request.Request.URL.RequestURI()
-	}
-	return fmt.Sprintf(
-		respLogString,
-		time.Now().Format(time.RFC3339), request.Request.RemoteAddr,
-		request.Request.Method, uri, response.StatusCode(), reqTime,
-	)
+	return
 }

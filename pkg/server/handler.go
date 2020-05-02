@@ -20,12 +20,11 @@ type CNIServerHandler struct {
 }
 
 // newCNIServerHandler 挂载 cni server 的 rest api 接口.
-func newCNIServerHandler(config *Configuration) (*CNIServerHandler, error) {
-	csh := &CNIServerHandler{
+func newCNIServerHandler(config *Configuration) (*CNIServerHandler) {
+	return &CNIServerHandler{
 		KubeClient: config.KubeClient,
 		Config:     config,
 	}
-	return csh, nil
 }
 
 func (csh *CNIServerHandler) handleAdd(req *restful.Request, resp *restful.Response) {
@@ -39,6 +38,7 @@ func (csh *CNIServerHandler) handleAdd(req *restful.Request, resp *restful.Respo
 	klog.Infof("parsed request %v", podReq)
 
 	var ipAddr, gateway string
+	// 这里为什么要重试10次呢 ???
 	for i := 0; i < 10; i++ {
 		pod, err := csh.KubeClient.
 			CoreV1().
@@ -49,6 +49,7 @@ func (csh *CNIServerHandler) handleAdd(req *restful.Request, resp *restful.Respo
 			resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
 			return
 		}
+
 		ipAddr = pod.Annotations[util.IPAddressAnnotation]
 		gateway = pod.Annotations[util.GatewayAnnotation]
 
