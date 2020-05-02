@@ -15,7 +15,7 @@ rules:
   resources: ["pods", "configmaps"]
   verbs: ["get", "list", "watch", "create", "patch", "update"]
 - apiGroups: ["apps"]
-  resources: ["deployments"]
+  resources: ["deployments", "replicasets"]
   verbs: ["get", "list", "watch"]
 - apiGroups: ["ipkeeper.generals.space"]
   ## 自定义类型资源也需要通过 rbac 赋予权限.
@@ -78,7 +78,7 @@ spec:
       hostPID: true
       containers:
       - name: crd-ipkeeper
-        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.34
+        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.35
         securityContext:
           privileged: true
           capabilities:

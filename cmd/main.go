@@ -36,11 +36,7 @@ func main() {
 	klog.SetOutput(os.Stdout)
 	defer klog.Flush()
 
-	config, err := server.ParseFlags()
-	if err != nil {
-		klog.Errorf("parse config failed %v", err)
-		os.Exit(1)
-	}
+	config := server.ParseFlags()
 
 	// home := homedir.HomeDir()
 	// kubeConfigPath := filepath.Join(home, ".kube", "config")
@@ -59,6 +55,6 @@ func main() {
 	c, err := controller.NewController(kubeClient, crdClient)
 	go c.Run(stopCh)
 
-	cniServer := server.NewCNIServer(config)
+	cniServer := server.NewCNIServer(config, kubeClient, crdClient)
 	cniServer.Run()
 }

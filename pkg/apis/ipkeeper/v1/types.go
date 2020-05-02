@@ -2,6 +2,7 @@ package v1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apimtypes "k8s.io/apimachinery/pkg/types"
 )
 
 // +genclient
@@ -34,9 +35,9 @@ type StaticIPSpec struct {
 
 // OwnerPod ...
 type OwnerPod struct {
-	Namespace string `json:"namespace"`
-	Name      string `json:"name"`
-	UID       string `json:"uid"`
+	Namespace string        `json:"namespace"`
+	Name      string        `json:"name"`
+	UID       apimtypes.UID `json:"uid"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -6,8 +6,10 @@ import (
 	"os"
 
 	restful "github.com/emicklei/go-restful"
+	cgkuber "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 
+	crdClientset "github.com/generals-space/crd-ipkeeper/pkg/client/clientset/versioned"
 	"github.com/generals-space/crd-ipkeeper/pkg/restapi"
 )
 
@@ -16,13 +18,26 @@ type CNIServer struct {
 	config     *Configuration
 	handler    *CNIServerHandler
 	httpServer *http.Server
+	// 两个 client 都是给 handler 用的
+	kubeClient cgkuber.Interface
+	crdClient  crdClientset.Interface
 }
 
 // NewCNIServer ...
-func NewCNIServer(config *Configuration) *CNIServer {
+func NewCNIServer(
+	config *Configuration,
+	kubeClient cgkuber.Interface,
+	crdClient crdClientset.Interface,
+) *CNIServer {
 	cniServer := &CNIServer{
-		config:  config,
-		handler: newCNIServerHandler(config),
+		config:     config,
+		handler:    newCNIServerHandler(
+			config,
+			kubeClient,
+			crdClient,
+		),
+		kubeClient: kubeClient,
+		crdClient:  crdClient,
 	}
 	cniServer.createHandler()
 	return cniServer
