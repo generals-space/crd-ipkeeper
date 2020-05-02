@@ -57,7 +57,7 @@ func main() {
 	kubeClient := kubernetes.NewForConfigOrDie(kubeConfig)
 	crdClient := crdClientset.NewForConfigOrDie(kubeConfig)
 	c, err := controller.NewController(kubeClient, crdClient)
-	c.Run(stopCh)
+	go c.Run(stopCh)
 
 	server.NewController(config)
 	server.RunServer(config)
