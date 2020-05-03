@@ -54,7 +54,12 @@ spec:
   version: v1
   names:
     kind: StaticIP
+    ## 单数
+    singular: staticip
+    ## 复数
     plural: staticips
+    ## 缩写
+    shortNames: ["sip"]
   scope: Namespaced
 
 ---
