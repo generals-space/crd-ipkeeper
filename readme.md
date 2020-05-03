@@ -34,9 +34,16 @@ coredns-67c766df46-q5g8x                0/1     Running   20         4h24m   172
 devops                                  1/1     Running   0          4h26m   172.16.91.140   k8s-master-01   <none>           <none>
 ```
 
-## 关于
+同时可通过查询`StaticIP`资源获取静态IP的分配情况.
 
-虽然工程名称叫`crd`, 但实际上并不是, 只不过是在最初创建仓库的时候认为可以用crd做到这样的功能.
+```console
+$ k get sip
+NAME                   OWNERKIND    NAMESPACE     IPPOOL
+deploy-devops-deploy   Deployment   kube-system   172.16.91.182/24
+pod-devops             Pod          kube-system   172.16.91.181/24
+```
+
+## 关于
 
 本工程可以称为CNI插件的插件, 因为ta的工作时机就是在`kubelet`在创建pause容器完成, 调用CNI插件为其申请IP时实现功能的. 
 
