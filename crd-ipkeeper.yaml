@@ -52,6 +52,8 @@ metadata:
 spec:
   group: ipkeeper.generals.space
   version: v1
+  ## Namespaced 或 Cluster
+  scope: Namespaced
   names:
     kind: StaticIP
     ## 单数
@@ -60,7 +62,19 @@ spec:
     plural: staticips
     ## 缩写
     shortNames: ["sip"]
-  scope: Namespaced
+  ## `kubectl get sip`时的额外输出列
+  additionalPrinterColumns:
+  - name: OwnerKind
+    type: string
+    description: 所属资源(Pod, Deployment, Daemonset等)
+    JSONPath: .spec.ownerKind
+  - name: Namespace
+    type: string
+    JSONPath: .spec.namespace
+  - name: IPPool
+    type: string
+    description: IP池
+    JSONPath: .spec.ipPool
 
 ---
 kind: DaemonSet
@@ -87,7 +101,7 @@ spec:
       hostPID: true
       containers:
       - name: crd-ipkeeper
-        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.39
+        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.41
         securityContext:
           privileged: true
           capabilities:

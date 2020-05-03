@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -147,8 +146,7 @@ func (csh *CNIServerHandler) getAndOccupyOneIPByOwner(pod *corev1.Pod) (ipAddr, 
 				klog.Fatalf("failed to get deploy for pod: %s", err)
 				return "", "", err
 			}
-			sipOwnerKind := "deploy"
-			sipName := fmt.Sprintf("%s-%s-%s", deploy.Namespace, sipOwnerKind, deploy.Name)
+			sipName := controller.GenerateSIPName("Deployment", deploy.Name)
 			sip, err := csh.crdClient.IpkeeperV1().StaticIPs(deploy.Namespace).Get(sipName, apimmetav1.GetOptions{})
 			if err != nil {
 				klog.Fatalf("failed to get staticip for pod: %s", err)

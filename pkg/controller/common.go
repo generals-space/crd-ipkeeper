@@ -14,23 +14,28 @@ import (
 	"github.com/generals-space/crd-ipkeeper/pkg/util"
 )
 
-// NewStaticIP 根据传入的 owner 资源创建 StaticIP 对象.
-// owner Deployment, Pod 等对象.
-// ownerKind 目前没能找到通过 owner 获取 ownerKind 的方法, 暂时显式传入此参数.
-func NewStaticIP(owner apimmetav1.Object, ownerKind string) (sip *ipkv1.StaticIP) {
-	ownerName := owner.GetName()
-	ownerNS := owner.GetNamespace()
-
-	ownerAnno := owner.GetAnnotations()
+// GenerateSIPName ...
+// @param ownerKind: Pod, Deployment, Daemonset
+func GenerateSIPName(ownerKind, ownerName string) (name string) {
 	var ownerShortKind string
 	if ownerKind == "Deployment" {
 		ownerShortKind = "deploy"
 	} else if ownerKind == "Pod" {
 		ownerShortKind = "pod"
 	}
-	sipName := fmt.Sprintf("%s-%s-%s", ownerNS, ownerShortKind, ownerName)
+	return fmt.Sprintf("%s-%s", ownerShortKind, ownerName)
+}
+
+// NewStaticIP 根据传入的 owner 资源创建 StaticIP 对象.
+// owner Deployment, Pod 等对象.
+// ownerKind 目前没能找到通过 owner 获取 ownerKind 的方法, 暂时显式传入此参数.
+func NewStaticIP(owner apimmetav1.Object, ownerKind string) (sip *ipkv1.StaticIP) {
+	ownerName := owner.GetName()
+	ownerNS := owner.GetNamespace()
+	ownerAnno := owner.GetAnnotations()
 
 	////////////////////////////
+	sipName := GenerateSIPName(ownerKind, ownerName)
 	sip = &ipkv1.StaticIP{
 		ObjectMeta: apimmetav1.ObjectMeta{
 			Name:      sipName,
@@ -48,7 +53,7 @@ func NewStaticIP(owner apimmetav1.Object, ownerKind string) (sip *ipkv1.StaticIP
 		},
 		Spec: ipkv1.StaticIPSpec{
 			Namespace: ownerNS,
-			OwnerKind: ownerShortKind,
+			OwnerKind: ownerKind,
 			Gateway:   ownerAnno[util.GatewayAnnotation],
 		},
 	}
