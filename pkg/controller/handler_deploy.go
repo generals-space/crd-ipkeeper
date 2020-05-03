@@ -10,7 +10,6 @@ import (
 	cgcache "k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 
-	ipkv1 "github.com/generals-space/crd-ipkeeper/pkg/apis/ipkeeper/v1"
 	"github.com/generals-space/crd-ipkeeper/pkg/util"
 )
 
@@ -147,42 +146,15 @@ func (c *Controller) handleAddDeploy(key string) (err error) {
 		return nil
 	}
 
-	// 尝试使用 newSIP() 函数构造 SIP 对象, 不过需要用到反射.
-	sipOwnerKind := "deploy"
-	sipName := fmt.Sprintf("%s-%s-%s", deploy.Namespace, sipOwnerKind, deploy.Name)
-
+	sip := NewStaticIP(deploy, "Deployment")
 	getOpt := &apimmetav1.GetOptions{}
-	_, err = c.crdClient.IpkeeperV1().StaticIPs(deploy.Namespace).Get(sipName, *getOpt)
+	_, err = c.crdClient.IpkeeperV1().StaticIPs(sip.Namespace).Get(sip.Name, *getOpt)
 	if err == nil {
-		klog.Infof("sip %s already exist, return", sipName)
+		klog.Infof("sip %s already exist, return", sip.Name)
 		return
 	}
-	klog.Infof("try to create new sip: %s", sipName)
-	sip := &ipkv1.StaticIP{
-		ObjectMeta: apimmetav1.ObjectMeta{
-			Name:      sipName,
-			Namespace: deploy.Namespace,
-			OwnerReferences: []apimmetav1.OwnerReference{
-				// NewControllerRef() 第1个参数为所属对象 owner,
-				// 第2个参数为 owner 的 gvk 信息对象.
-				*apimmetav1.NewControllerRef(
-					deploy,
-					// deploy.GroupVersionKind() 的打印结果为 "/, Kind=" (不是字符串类型)
-					// 而 WithKind("Deployment") 的打印结果为 "apps/v1, Kind=Deployment"
-					appsv1.SchemeGroupVersion.WithKind("Deployment"),
-				),
-			},
-		},
-		Spec: ipkv1.StaticIPSpec{
-			Namespace: deploy.Namespace,
-			OwnerKind: sipOwnerKind,
-			IPPool:    deploy.Annotations[util.IPPoolAnnotation],
-			Gateway:   deploy.Annotations[util.GatewayAnnotation],
-			IPMap:     c.initIPMap(deploy.Annotations[util.IPPoolAnnotation]),
-		},
-	}
-	klog.V(3).Infof("new sip ojbect: %+v", sip)
-	actualSIP, err := c.crdClient.IpkeeperV1().StaticIPs(deploy.Namespace).Create(sip)
+	klog.Infof("try to create new sip: %s", sip.Name)
+	actualSIP, err := c.crdClient.IpkeeperV1().StaticIPs(sip.Namespace).Create(sip)
 	if err != nil {
 		// if err.Error() == "already exists" {}
 		klog.Fatalf("failed to create new sip for deploy %s: %s", deploy.Name, err)

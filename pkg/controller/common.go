@@ -14,7 +14,8 @@ import (
 	"github.com/generals-space/crd-ipkeeper/pkg/util"
 )
 
-// NewStaticIP ...
+// NewStaticIP 根据传入的 owner 资源创建 StaticIP 对象.
+// owner Deployment, Pod 等对象.
 // ownerKind 目前没能找到通过 owner 获取 ownerKind 的方法, 暂时显式传入此参数.
 func NewStaticIP(owner apimmetav1.Object, ownerKind string) (sip *ipkv1.StaticIP) {
 	ownerName := owner.GetName()
@@ -66,15 +67,6 @@ func NewStaticIP(owner apimmetav1.Object, ownerKind string) (sip *ipkv1.StaticIP
 func initIPMap(IPsStr string) (ipMap map[string]*ipkv1.OwnerPod) {
 	ipMap = map[string]*ipkv1.OwnerPod{}
 	for _, v := range strings.Split(IPsStr, ",") {
-		ipMap[v] = nil
-	}
-	return
-}
-
-// initIPMap 创建 IP 与 Pod 的映射表
-func (c *Controller) initIPMap(ipPoolAnnotation string) (ipMap map[string]*ipkv1.OwnerPod) {
-	ipMap = map[string]*ipkv1.OwnerPod{}
-	for _, v := range strings.Split(ipPoolAnnotation, ",") {
 		ipMap[v] = nil
 	}
 	return
