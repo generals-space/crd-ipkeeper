@@ -13,6 +13,7 @@ import (
 
 	crdv1 "github.com/generals-space/crd-ipkeeper/pkg/apis/ipkeeper/v1"
 	crdClientset "github.com/generals-space/crd-ipkeeper/pkg/client/clientset/versioned"
+	"github.com/generals-space/crd-ipkeeper/pkg/controller"
 	"github.com/generals-space/crd-ipkeeper/pkg/restapi"
 	"github.com/generals-space/crd-ipkeeper/pkg/util"
 )
@@ -59,7 +60,8 @@ func (csh *CNIServerHandler) handleAdd(req *restful.Request, resp *restful.Respo
 			resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
 			return
 		}
-
+		// 如果一个 Pod 被 deploy/daemonset 等所有, 那么 StaticIP 一定已经创建好了.
+		// 而如果只是一个单 Pod 资源, 那要等到该 Pod 创建完成后再去补上 StaticIP 对象了.
 		if pod.OwnerReferences != nil {
 			ipAddr, gateway, err = csh.getAndOccupyOneIPByOwner(pod)
 			if err != nil {
@@ -70,12 +72,22 @@ func (csh *CNIServerHandler) handleAdd(req *restful.Request, resp *restful.Respo
 		} else {
 			ipAddr = pod.Annotations[util.IPAddressAnnotation]
 			gateway = pod.Annotations[util.GatewayAnnotation]
+
 		}
 
 		if ipAddr == "" || gateway == "" {
 			// wait controller assign an address
 			time.Sleep(2 * time.Second)
 			continue
+		}
+
+		if pod.OwnerReferences == nil {
+			err = csh.createAndOccupyOneIP(pod)
+			if err != nil {
+				klog.Errorf("get ipAddr and gateway from owner failed %v", err)
+				resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
+				return
+			}
 		}
 		break
 	}
@@ -173,5 +185,23 @@ func (csh *CNIServerHandler) getAndOccupyOneIP(sip *crdv1.StaticIP, pod *corev1.
 		return
 	}
 	klog.Infof("success to occupy one IP from sip: %s", sip.Name)
+	return
+}
+
+func (csh *CNIServerHandler) createAndOccupyOneIP(pod *corev1.Pod) (err error) {
+	sip := controller.NewStaticIP(pod, "Pod")
+	sip.Spec.IPMap[sip.Spec.IPPool] = &crdv1.OwnerPod{
+		Name:      pod.Name,
+		Namespace: pod.Namespace,
+		UID:       pod.UID,
+	}
+	klog.V(3).Infof("new sip ojbect: %+v", sip)
+	actualSIP, err := csh.crdClient.IpkeeperV1().StaticIPs(pod.Namespace).Create(sip)
+	if err != nil {
+		// if err.Error() == "already exists" {}
+		klog.Fatalf("failed to create new StaticIP for Pod %s: %s", pod.Name, err)
+		return err
+	}
+	klog.Infof("success to create new sip object: %+v", actualSIP)
 	return
 }

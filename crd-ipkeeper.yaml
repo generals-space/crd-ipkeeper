@@ -12,8 +12,12 @@ metadata:
 rules:
 - apiGroups: [""]
   ## configmap用于创建分布式资源锁
-  resources: ["pods", "configmaps"]
+  resources: ["configmaps"]
   verbs: ["get", "list", "watch", "create", "patch", "update"]
+- apiGroups: [""]
+  ## configmap用于创建分布式资源锁
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
 - apiGroups: ["apps"]
   resources: ["deployments", "replicasets"]
   verbs: ["get", "list", "watch"]
@@ -78,7 +82,7 @@ spec:
       hostPID: true
       containers:
       - name: crd-ipkeeper
-        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.35
+        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.38
         securityContext:
           privileged: true
           capabilities:
