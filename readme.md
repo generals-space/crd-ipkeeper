@@ -17,13 +17,17 @@ kind: Pod
 metadata:
   name: devops
   annotations:
-    ovn.kubernetes.io/ip_address: 172.16.91.140/24
-    ovn.kubernetes.io/gateway: 172.16.91.2
+    ipkeeper.generals.space/ip_address: 172.16.91.140/24
+    ipkeeper.generals.space/gateway: 172.16.91.2
 spec:
   containers:
   - name: devops
     image: registry.cn-hangzhou.aliyuncs.com/generals-space/centos7:devops
     command: ["tail", "-f", "/etc/os-release"]
+    securityContext:
+      privileged: false
+      capabilities:
+        add: ["NET_ADMIN"]
 ```
 
 ```console
