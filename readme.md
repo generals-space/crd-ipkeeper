@@ -17,7 +17,7 @@ kind: Pod
 metadata:
   name: devops
   annotations:
-    ipkeeper.generals.space/ip_address: 172.16.91.140/24
+    ipkeeper.generals.space/ip_address: 172.16.91.181/24
     ipkeeper.generals.space/gateway: 172.16.91.2
 spec:
   containers:
@@ -35,7 +35,7 @@ $ k get pod -o wide
 NAME                                    READY   STATUS    RESTARTS   AGE     IP              NODE            NOMINATED NODE   READINESS GATES
 coredns-67c766df46-cxjc2                0/1     Running   20         4h25m   172.16.91.161   k8s-master-01   <none>           <none>
 coredns-67c766df46-q5g8x                0/1     Running   20         4h24m   172.16.91.162   k8s-master-01   <none>           <none>
-devops                                  1/1     Running   0          4h26m   172.16.91.140   k8s-master-01   <none>           <none>
+devops                                  1/1     Running   0          4h26m   172.16.91.181   k8s-master-01   <none>           <none>
 ```
 
 同时可通过查询`StaticIP`资源获取静态IP的分配情况.
@@ -43,7 +43,7 @@ devops                                  1/1     Running   0          4h26m   172
 ```console
 $ k get sip
 NAME                   OWNERKIND    NAMESPACE     IPPOOL
-deploy-devops-deploy   Deployment   kube-system   172.16.91.182/24
+deploy-devops-deploy   Deployment   kube-system   172.16.91.182/24,172.16.91.183/24
 pod-devops             Pod          kube-system   172.16.91.181/24
 ```
 
