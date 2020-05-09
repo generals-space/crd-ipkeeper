@@ -1,10 +1,27 @@
 package controller
 
 import (
+	"github.com/generals-space/crd-ipkeeper/pkg/staticip"
 	apimmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	cgcache "k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 )
+
+func (c *Controller) enqueueDelDeploy(obj interface{}) {
+	if !c.isLeader() {
+		return
+	}
+	var key string
+	var err error
+	key, err = cgcache.MetaNamespaceKeyFunc(obj)
+	if err != nil {
+		utilruntime.HandleError(err)
+		return
+	}
+	// deploy := obj.(*appsv1.Deployment)
+	c.delDeployQueue.AddRateLimited(key)
+}
 
 func (c *Controller) runDelDeployWorker() {
 	for c.processNextDelDeployWorkItem() {
@@ -36,7 +53,7 @@ func (c *Controller) handleDelDeploy(key string) (err error) {
 	if deploy == nil {
 		return nil
 	}
-	sipName := GenerateSIPName("Deployment", deploy.Name)
+	sipName := staticip.GenerateSIPName("Deployment", deploy.Name)
 	klog.Infof("try to delete sip: %s", sipName)
 
 	delOpt := &apimmetav1.DeleteOptions{}

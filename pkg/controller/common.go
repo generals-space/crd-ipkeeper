@@ -2,78 +2,74 @@ package controller
 
 import (
 	"fmt"
-	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
-	apimmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
+	apimerrors "k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	cgcache "k8s.io/client-go/tools/cache"
 	cgworkqueue "k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 
-	ipkv1 "github.com/generals-space/crd-ipkeeper/pkg/apis/ipkeeper/v1"
 	"github.com/generals-space/crd-ipkeeper/pkg/util"
 )
 
-// GenerateSIPName ...
-// @param ownerKind: Pod, Deployment, Daemonset
-func GenerateSIPName(ownerKind, ownerName string) (name string) {
-	var ownerShortKind string
-	if ownerKind == "Deployment" {
-		ownerShortKind = "deploy"
-	} else if ownerKind == "Pod" {
-		ownerShortKind = "pod"
+// getDeployFromKey 从 Lister 成员中取得指定 ns/name 的 deploy 对象.
+// 另外还有对参数 key 的解析, 对获得的 deploy 对象是否拥有 ippool 等字段的判断等操作.
+// key 的格式如 kube-system/devops-deploy
+// caller: c.handleAddDeploy(), c.handleDelDeploy()
+func (c *Controller) getDeployFromKey(key string) (deploy *appsv1.Deployment, err error) {
+	// Convert the namespace/name string into a distinct namespace and name
+	ns, name, err := cgcache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		err = fmt.Errorf("invalid resource key: %s", key)
+		return
 	}
-	return fmt.Sprintf("%s-%s", ownerShortKind, ownerName)
+
+	// 从 Lister 缓存中取对象
+	deploy, err = c.deployLister.Deployments(ns).Get(name)
+	if err != nil {
+		// 如果 deploy 对象被删除了, 就会走到这里, 所以应该在这里加入执行
+		if apimerrors.IsNotFound(err) {
+			klog.Infof("deploy doesn't exist: %s/%s ...", ns, name)
+			return
+		}
+		err = fmt.Errorf("failed to list deploy by: %s/%s", ns, name)
+		return
+	}
+
+	// 能加入到 addDeployQueue 都是已经经过 enqueueAddDeploy() 方法筛选过的,
+	// 但还是要检查一遍
+	if deploy.Annotations[util.IPPoolAnnotation] == "" &&
+		deploy.Annotations[util.GatewayAnnotation] == "" {
+		klog.Fatal("deploy doesn't exist: %s/%s ...", ns, name)
+		return nil, nil
+	}
+	return
 }
 
-// NewStaticIP 根据传入的 owner 资源创建 StaticIP 对象.
-// owner Deployment, Pod 等对象.
-// ownerKind 目前没能找到通过 owner 获取 ownerKind 的方法, 暂时显式传入此参数.
-func NewStaticIP(owner apimmetav1.Object, ownerKind string) (sip *ipkv1.StaticIP) {
-	ownerName := owner.GetName()
-	ownerNS := owner.GetNamespace()
-	ownerAnno := owner.GetAnnotations()
-
-	////////////////////////////
-	sipName := GenerateSIPName(ownerKind, ownerName)
-	sip = &ipkv1.StaticIP{
-		ObjectMeta: apimmetav1.ObjectMeta{
-			Name:      sipName,
-			Namespace: ownerNS,
-			OwnerReferences: []apimmetav1.OwnerReference{
-				// NewControllerRef() 第1个参数为所属对象 owner,
-				// 第2个参数为 owner 的 gvk 信息对象.
-				*apimmetav1.NewControllerRef(
-					owner,
-					// deploy.GroupVersionKind() 的打印结果为 "/, Kind=" (不是字符串类型)
-					// 而 xxx.WithKind("Deployment") 的打印结果为 "apps/v1, Kind=Deployment"
-					appsv1.SchemeGroupVersion.WithKind(ownerKind),
-				),
-			},
-		},
-		Spec: ipkv1.StaticIPSpec{
-			Namespace: ownerNS,
-			OwnerKind: ownerKind,
-			Gateway:   ownerAnno[util.GatewayAnnotation],
-		},
+// getDeployFromKey 从 Lister 成员中取得指定 ns/name 的 pod 对象.
+// 具体操作基本等同于 c.getDeployFromKey()
+func (c *Controller) getPodFromKey(key string) (pod *corev1.Pod, err error) {
+	// Convert the namespace/name string into a distinct namespace and name
+	ns, name, err := cgcache.SplitMetaNamespaceKey(key)
+	if err != nil {
+		err = fmt.Errorf("invalid resource key: %s", key)
+		return
 	}
-	if ownerKind == "Deployment" {
-		sip.Spec.IPPool = ownerAnno[util.IPPoolAnnotation]
-	} else if ownerKind == "Pod" {
-		sip.Spec.IPPool = ownerAnno[util.IPAddressAnnotation]
-	}
-	sip.Spec.IPMap = initIPMap(sip.Spec.IPPool)
 
-	return sip
-}
-
-// initIPMap 创建 IP 与 Pod 的映射表.
-// 参数 IPsStr 为以逗号分隔的点分十进制IP字符串, 如 "192.168.0.1/24,192.168.0.2/24"
-func initIPMap(IPsStr string) (ipMap map[string]*ipkv1.OwnerPod) {
-	ipMap = map[string]*ipkv1.OwnerPod{}
-	for _, v := range strings.Split(IPsStr, ",") {
-		ipMap[v] = nil
+	// 从 Lister 缓存中取对象
+	pod, err = c.podLister.Pods(ns).Get(name)
+	if err != nil {
+		// 如果 pod 对象被删除了, 就会走到这里, 所以应该在这里加入执行
+		if apimerrors.IsNotFound(err) {
+			klog.Infof("pod doesn't exist: %s/%s ...", ns, name)
+			return
+		}
+		err = fmt.Errorf("failed to list pod by: %s/%s", ns, name)
+		return
 	}
+
 	return
 }
 

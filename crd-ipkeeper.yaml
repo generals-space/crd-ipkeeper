@@ -10,14 +10,15 @@ kind: ClusterRole
 metadata:
   name: crd-ipkeeper
 rules:
+## 注意: 在此处修改了某一资源的权限并更新后, 
+## SA 账号对应的 Pod(这里是crd-ipkeeper的各 Pod)权限将立刻生效, 无需重启这些 Pod.
 - apiGroups: [""]
   ## configmap用于创建分布式资源锁
   resources: ["configmaps"]
   verbs: ["get", "list", "watch", "create", "patch", "update"]
 - apiGroups: [""]
-  ## configmap用于创建分布式资源锁
   resources: ["pods"]
-  verbs: ["get", "list", "watch"]
+  verbs: ["get", "list", "watch", "delete"]
 - apiGroups: ["apps"]
   resources: ["deployments", "replicasets"]
   verbs: ["get", "list", "watch"]
@@ -101,7 +102,7 @@ spec:
       hostPID: true
       containers:
       - name: crd-ipkeeper
-        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.41
+        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.74
         securityContext:
           privileged: true
           capabilities:

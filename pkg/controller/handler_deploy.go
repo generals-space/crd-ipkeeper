@@ -1,54 +1,18 @@
 package controller
 
 import (
-	"fmt"
-
 	appsv1 "k8s.io/api/apps/v1"
-	apimerrors "k8s.io/apimachinery/pkg/api/errors"
 	apimmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	cgcache "k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 
+	"github.com/generals-space/crd-ipkeeper/pkg/staticip"
 	"github.com/generals-space/crd-ipkeeper/pkg/util"
 )
 
-// getDeployFromKey 从 Lister 成员中取得指定 ns/name 的 deploy 对象.
-// 另外还有对参数 key 的解析, 对获得的 deploy 对象是否拥有 ippool 等字段的判断等操作.
-// key 的格式如 kube-system/devops-deploy
-// caller: c.handleAddDeploy(), c.handleDelDeploy()
-func (c *Controller) getDeployFromKey(key string) (deploy *appsv1.Deployment, err error) {
-	// Convert the namespace/name string into a distinct namespace and name
-	ns, name, err := cgcache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		err = fmt.Errorf("invalid resource key: %s", key)
-		return
-	}
-
-	// 从 Lister 缓存中取对象
-	deploy, err = c.deployLister.Deployments(ns).Get(name)
-	if err != nil {
-		// 如果 deploy 对象被删除了, 就会走到这里, 所以应该在这里加入执行
-		if apimerrors.IsNotFound(err) {
-			klog.Infof("deploy doesn't exist: %s/%s ...", ns, name)
-			return
-		}
-		err = fmt.Errorf("failed to list deploy by: %s/%s", ns, name)
-		return
-	}
-
-	// 能加入到 addDeployQueue 都是已经经过 enqueueAddDeploy() 方法筛选过的,
-	// 但还是要检查一遍
-	if deploy.Annotations[util.IPPoolAnnotation] == "" &&
-		deploy.Annotations[util.GatewayAnnotation] == "" {
-		klog.Fatal("deploy doesn't exist: %s/%s ...", ns, name)
-		return nil, nil
-	}
-	return
-}
-
 //////////////////////////////////////////////////////////////
-
+// enqueue 前期操作
 func (c *Controller) enqueueAddDeploy(obj interface{}) {
 	if !c.isLeader() {
 		return
@@ -72,26 +36,58 @@ func (c *Controller) enqueueAddDeploy(obj interface{}) {
 	}
 	return
 }
-func (c *Controller) enqueueUpdateDeploy(oldObj, newObj interface{}) {
 
-}
-func (c *Controller) enqueueDelDeploy(obj interface{}) {
+// enqueueUpdateDeploy ...
+// 貌似在发生 Add 事件时也会同时触发 Update 事件而调用此函数.
+func (c *Controller) enqueueUpdateDeploy(oldObj, newObj interface{}) {
 	if !c.isLeader() {
 		return
 	}
+
+	oldD := oldObj.(*appsv1.Deployment)
+	newD := newObj.(*appsv1.Deployment)
+
+	if oldD.ResourceVersion == newD.ResourceVersion {
+		// 这种情况一般是定时的 update, 并非由于资源对象发生变动而触发.
+		return
+	}
+
 	var key string
 	var err error
-	key, err = cgcache.MetaNamespaceKeyFunc(obj)
+	// oldObj 与 newObj 得到的 key 是相同的.
+	key, err = cgcache.MetaNamespaceKeyFunc(newObj)
 	if err != nil {
 		utilruntime.HandleError(err)
 		return
 	}
-	// deploy := obj.(*appsv1.Deployment)
-	c.delDeployQueue.AddRateLimited(key)
+	prev := oldD.Annotations[util.IPPoolAnnotation] != "" &&
+		oldD.Annotations[util.GatewayAnnotation] != ""
+	next := newD.Annotations[util.IPPoolAnnotation] != "" &&
+		newD.Annotations[util.GatewayAnnotation] != ""
+
+	if !prev && next {
+		// 1. IPPool 注解从无到有: 要走的是 Add 流程
+		// c.addDeployQueue.AddRateLimited(newKey)
+	} else if prev && !next {
+		// 2. IPPool 注解从有到无: 要走的是 Del 流程
+		// c.delDeployQueue.AddRateLimited(newKey)
+	} else if prev && next {
+		// 3. IPPool 发生变化: StaticIP 资源不变, 内容需要进行修改
+		if oldD.Annotations[util.IPPoolAnnotation] == newD.Annotations[util.IPPoolAnnotation] &&
+			oldD.Annotations[util.GatewayAnnotation] == newD.Annotations[util.GatewayAnnotation] {
+			// 如果 IPPool 和 Gateway 注解值未发生变动, 则无需操作
+			return
+		}
+		klog.Infof("enqueue add ip pool deploy %s", key)
+		c.updateDeployQueue.AddRateLimited(key)
+	} else {
+		// 其他的不管
+	}
+	return
 }
 
 //////////////////////////////////////////////////////////////
-
+// process 实际操作 Add 部分
 func (c *Controller) runAddDeployWorker() {
 	for c.processNextAddDeployWorkItem() {
 	}
@@ -146,7 +142,7 @@ func (c *Controller) handleAddDeploy(key string) (err error) {
 		return nil
 	}
 
-	sip := NewStaticIP(deploy, "Deployment")
+	sip := staticip.NewStaticIP(deploy, "Deployment")
 	getOpt := &apimmetav1.GetOptions{}
 	_, err = c.crdClient.IpkeeperV1().StaticIPs(sip.Namespace).Get(sip.Name, *getOpt)
 	if err == nil {
@@ -163,4 +159,43 @@ func (c *Controller) handleAddDeploy(key string) (err error) {
 	}
 	klog.Infof("success to create new sip object: %+v", actualSIP)
 	return
+}
+
+//////////////////////////////////////////////////////////////
+// process 实际操作 Update 部分
+func (c *Controller) runUpdateDeployWorker() {
+	for c.processNextUpdateDeployWorkItem() {
+	}
+}
+
+func (c *Controller) processNextUpdateDeployWorkItem() bool {
+	var err error
+	obj, shutdown := c.updateDeployQueue.Get()
+	if shutdown {
+		return false
+	}
+	err = c.processNextWorkItem(obj, c.updateDeployQueue, c.handleUpdateDeploy)
+	if err != nil {
+		utilruntime.HandleError(err)
+		return true
+	}
+
+	return true
+}
+
+func (c *Controller) handleUpdateDeploy(key string) (err error) {
+	deploy, err := c.getDeployFromKey(key)
+	if err != nil {
+		utilruntime.HandleError(err)
+		return
+	}
+	// 当 deploy 中不含 ippool 等字段时即为 nil, 也不需要处理.
+	if deploy == nil {
+		return nil
+	}
+
+	oldSIP, err := staticip.GetStaticIP(c.crdClient, deploy, "Deployment")
+	newSIP := staticip.NewStaticIP(deploy, "Deployment")
+
+	return staticip.RenewStaticIP(c.kubeClient, c.crdClient, oldSIP, newSIP)
 }

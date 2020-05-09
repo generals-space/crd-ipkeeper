@@ -5,15 +5,13 @@ import (
 	"time"
 
 	"github.com/emicklei/go-restful"
-	corev1 "k8s.io/api/core/v1"
 	apimmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	cgkuber "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 
-	crdv1 "github.com/generals-space/crd-ipkeeper/pkg/apis/ipkeeper/v1"
 	crdClientset "github.com/generals-space/crd-ipkeeper/pkg/client/clientset/versioned"
-	"github.com/generals-space/crd-ipkeeper/pkg/controller"
 	"github.com/generals-space/crd-ipkeeper/pkg/restapi"
+	"github.com/generals-space/crd-ipkeeper/pkg/staticip"
 	"github.com/generals-space/crd-ipkeeper/pkg/util"
 )
 
@@ -62,7 +60,14 @@ func (csh *CNIServerHandler) handleAdd(req *restful.Request, resp *restful.Respo
 		// 如果一个 Pod 被 deploy/daemonset 等所有, 那么 StaticIP 一定已经创建好了.
 		// 而如果只是一个单 Pod 资源, 那要等到该 Pod 创建完成后再去补上 StaticIP 对象了.
 		if pod.OwnerReferences != nil {
-			ipAddr, gateway, err = csh.getAndOccupyOneIPByOwner(pod)
+			sip, err := staticip.GetPodOwnerSIP(csh.kubeClient, csh.crdClient, pod)
+			if err != nil {
+				klog.Errorf("get sip from owner failed %v", err)
+				resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
+				return
+			}
+			ipAddr, gateway, err = staticip.AccquireIP(csh.crdClient, sip, pod)
+			// ipAddr, gateway, err = csh.getAndOccupyOneIPByOwner(pod)
 			if err != nil {
 				klog.Errorf("get ipAddr and gateway from owner failed %v", err)
 				resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
@@ -71,7 +76,6 @@ func (csh *CNIServerHandler) handleAdd(req *restful.Request, resp *restful.Respo
 		} else {
 			ipAddr = pod.Annotations[util.IPAddressAnnotation]
 			gateway = pod.Annotations[util.GatewayAnnotation]
-
 		}
 
 		if ipAddr == "" || gateway == "" {
@@ -81,7 +85,7 @@ func (csh *CNIServerHandler) handleAdd(req *restful.Request, resp *restful.Respo
 		}
 
 		if pod.OwnerReferences == nil {
-			err = csh.createAndOccupyOneIP(pod)
+			err = staticip.CreateAndRequireIP(csh.crdClient, pod)
 			if err != nil {
 				klog.Errorf("get ipAddr and gateway from owner failed %v", err)
 				resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
@@ -90,6 +94,7 @@ func (csh *CNIServerHandler) handleAdd(req *restful.Request, resp *restful.Respo
 		}
 		break
 	}
+
 	// 如果 ipAddr 还是空, 说明此Pod/Deploy/DaemonSet没有声明固定IP的注解, 直接返回.
 	if ipAddr == "" {
 		resp.WriteHeaderAndEntity(
@@ -122,84 +127,5 @@ func (csh *CNIServerHandler) handleAdd(req *restful.Request, resp *restful.Respo
 // handleDel 处理Pod移除的事件
 func (csh *CNIServerHandler) handleDel(req *restful.Request, resp *restful.Response) {
 	resp.WriteHeader(http.StatusNoContent)
-	return
-}
-
-// getAndOccupyOneIPByOwner 当发现请求来源的 Pod 属于其他资源时, 调用此函数.
-func (csh *CNIServerHandler) getAndOccupyOneIPByOwner(pod *corev1.Pod) (ipAddr, gateway string, err error) {
-	owner := pod.OwnerReferences[0]
-
-	// deployment 通过 rs 管理 Pod, 但是 daemonset 却是直接管理的, 这两者要注意区分.
-	if owner.Kind == "ReplicaSet" {
-		rs, err := csh.kubeClient.AppsV1().ReplicaSets(pod.Namespace).Get(owner.Name, apimmetav1.GetOptions{})
-		if err != nil {
-			klog.Fatalf("failed to get replicaset for pod: %s", err)
-			return "", "", err
-		}
-		if rs.OwnerReferences == nil {
-			// 如果 rs 没有引用者
-		} else {
-			// 目前已知的 rs 的引用者只有 deployment
-			rsOwner := rs.OwnerReferences[0]
-			deploy, err := csh.kubeClient.AppsV1().Deployments(pod.Namespace).Get(rsOwner.Name, apimmetav1.GetOptions{})
-			if err != nil {
-				klog.Fatalf("failed to get deploy for pod: %s", err)
-				return "", "", err
-			}
-			sipName := controller.GenerateSIPName("Deployment", deploy.Name)
-			sip, err := csh.crdClient.IpkeeperV1().StaticIPs(deploy.Namespace).Get(sipName, apimmetav1.GetOptions{})
-			if err != nil {
-				klog.Fatalf("failed to get staticip for pod: %s", err)
-				return "", "", err
-			}
-			return csh.getAndOccupyOneIP(sip, pod)
-		}
-	} else if owner.Kind == "DaemonSet" {
-
-	}
-	return
-}
-
-func (csh *CNIServerHandler) getAndOccupyOneIP(sip *crdv1.StaticIP, pod *corev1.Pod) (ipaddr, gateway string, err error) {
-	for k, v := range sip.Spec.IPMap {
-		if v == nil {
-			ipaddr = k
-			gateway = sip.Spec.Gateway
-			sip.Spec.IPMap[k] = &crdv1.OwnerPod{
-				Namespace: pod.Namespace,
-				Name:      pod.Name,
-				UID:       pod.UID,
-			}
-			break
-		}
-	}
-	if ipaddr == "" && gateway == "" {
-		klog.Errorf("no more IP avaliable in sip: %s", sip.Name)
-		return
-	}
-	_, err = csh.crdClient.IpkeeperV1().StaticIPs(sip.Namespace).Update(sip)
-	if err != nil {
-		klog.Errorf("failed to occupy one IP from sip: %s", sip.Name)
-		return
-	}
-	klog.Infof("success to occupy one IP from sip: %s", sip.Name)
-	return
-}
-
-func (csh *CNIServerHandler) createAndOccupyOneIP(pod *corev1.Pod) (err error) {
-	sip := controller.NewStaticIP(pod, "Pod")
-	sip.Spec.IPMap[sip.Spec.IPPool] = &crdv1.OwnerPod{
-		Name:      pod.Name,
-		Namespace: pod.Namespace,
-		UID:       pod.UID,
-	}
-	klog.V(3).Infof("new sip ojbect: %+v", sip)
-	actualSIP, err := csh.crdClient.IpkeeperV1().StaticIPs(pod.Namespace).Create(sip)
-	if err != nil {
-		// if err.Error() == "already exists" {}
-		klog.Fatalf("failed to create new StaticIP for Pod %s: %s", pod.Name, err)
-		return err
-	}
-	klog.Infof("success to create new sip object: %+v", actualSIP)
 	return
 }

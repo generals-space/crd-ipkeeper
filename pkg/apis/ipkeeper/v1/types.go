@@ -30,7 +30,11 @@ type StaticIPSpec struct {
 
 	// IPMap key 为 192.168.1.1/24 这种点分十进制字符串
 	// val 为 OwnerPod 对象, 表示此 IP 的拥有者
-	IPMap map[string]*OwnerPod `json:"ipmap"`
+	IPMap     map[string]*OwnerPod `json:"ipmap"`
+	Used      []string             `json:"used"`
+	Avaliable []string             `json:"avaliable"`
+	// 已分配的IP占IP池的比例, 如 1/4, 2/4 等
+	Ratio string `json:"ratio"`
 }
 
 // OwnerPod ...
