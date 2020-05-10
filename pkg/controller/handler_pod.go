@@ -102,7 +102,6 @@ func (c *Controller) handleAddPod(key string) (err error) {
 	if pod == nil {
 		return nil
 	}
-	klog.Infof("000000000000000000000000 pod: %s", pod.Name)
 
 	var sip *ipkv1.StaticIP
 	// 查询是否存在当前 Pod 对应的 StaticIP 对象
@@ -132,8 +131,6 @@ func (c *Controller) handleAddPod(key string) (err error) {
 			flag = true
 			break
 		}
-		klog.Infof("000000000000000000000000 pod.Meta: %+v", pod.ObjectMeta)
-		klog.Infof("000000000000000000000000 sip: %+v", sip)
 	}
 	if !flag {
 		klog.Warningf("the pod %s doesn't get an ip at last", pod.Name)
