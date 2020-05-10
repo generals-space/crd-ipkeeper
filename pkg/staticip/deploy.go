@@ -11,7 +11,7 @@ import (
 	crdClientset "github.com/generals-space/crd-ipkeeper/pkg/client/clientset/versioned"
 )
 
-// RenewStaticIP ...
+// RenewStaticIP 对比 oldSIP/newSIP 的不同, 移除多余 Pod 并更新 oldSIP 为 newSIP 的状态.
 // caller: handleUpdateDeploy()
 func RenewStaticIP(
 	kubeClient cgkuber.Interface,
@@ -35,12 +35,14 @@ func RenewStaticIP(
 	return
 }
 
+// renewStaticIP ...
 func renewStaticIP(
 	oldSIP, newSIP *ipkv1.StaticIP,
 ) (sip *ipkv1.StaticIP, pods []*ipkv1.OwnerPod, err error) {
 	pods = []*ipkv1.OwnerPod{}
-	// 遍历 oldSIP 已经分配出去的 IP 列表, 若有成员未在 newSIP 的 IPPool 中,
-	// 则需要将已经分配了这些 IP 的 Pod 移除.
+	// 遍历 oldSIP 已经分配出去的 IP 列表,
+	// 若仍在 newSIP 的 IPMap 中, 则保留并赋值到 newSIP 的 ownerPod 中,
+	// 否则需要将那些已经占用了这些 IP 的 Pod 移除.
 	for _, ip := range oldSIP.Spec.Used {
 		ownerPod := oldSIP.Spec.IPMap[ip]
 		_, ok := newSIP.Spec.IPMap[ip]
@@ -56,13 +58,16 @@ func renewStaticIP(
 		}
 	}
 
-	// 还有要将 avaliable 减去 used 的部分.
+	// 还有要将 avaliable 减去 used 的部分, 并把未使用的 IP 也添加到 IPMap 中.
 	for ip, pod := range newSIP.Spec.IPMap {
 		if pod != nil {
 			continue
 		}
+		newSIP.Spec.IPMap[ip] = nil
 		newSIP.Spec.Avaliable = append(newSIP.Spec.Avaliable, ip)
 	}
+
+	newSIP.Spec.Ratio = fmt.Sprintf("%d/%d", len(newSIP.Spec.Used), len(newSIP.Spec.IPMap))
 
 	// 因为本函数是为 Update 操作做准备, 而 Update 操作需要 StaticIP 对象
 	// 拥有 resourceVersion 字段, 所以这里将更新后的信息赋值给 oldSIP,

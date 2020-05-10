@@ -107,7 +107,11 @@ func GetPodOwnerSIP(
 }
 
 // AccquireIP 从目标 sip 对象的 IPMap 中找到可用的 IP 并返回,
-// 同时修改 sip 对象的 Avaliable 和 Used 列表(但不更新, 更新操作由调用者完成)
+// 同时修改 sip 对象的 Avaliable 和 Used 列表(但不更新, 更新操作由调用者完成).
+// caller: pkg/server/handler.go -> CNIServerHandler.handleAdd()
+// 调用时机为在创建 pause 容器, 调用 cni ipam 插件申请的过程中,
+// 而不是在 controller 中通过监听 Pod 的 Add 事件,
+// 因为后者触发在前者之前, 根本没有办法实现...
 func AccquireIP(
 	crdClient crdClientset.Interface,
 	sip *ipkv1.StaticIP,
@@ -139,6 +143,7 @@ func AccquireIP(
 	}
 	sip.Spec.Avaliable = newAvaliable
 	sip.Spec.Used = append(sip.Spec.Used, ipaddr)
+	sip.Spec.Ratio = fmt.Sprintf("%d/%d", len(sip.Spec.Used), len(sip.Spec.IPMap))
 
 	_, err = crdClient.IpkeeperV1().StaticIPs(sip.Namespace).Update(sip)
 	if err != nil {
@@ -186,7 +191,7 @@ func ReleaseIP(
 	sip.Spec.Used = newUsed
 	sip.Spec.Avaliable = append(sip.Spec.Avaliable, podIP)
 	sip.Spec.IPMap[podIP] = nil
-
+	sip.Spec.Ratio = fmt.Sprintf("%d/%d", len(sip.Spec.Used), len(sip.Spec.IPMap))
 	_, err = crdClient.IpkeeperV1().StaticIPs(sip.Namespace).Update(sip)
 	if err != nil {
 		klog.Errorf("failed to occupy one IP from sip: %s", sip.Name)
@@ -201,12 +206,15 @@ func CreateAndRequireIP(
 	pod *corev1.Pod,
 ) (err error) {
 	sip := NewStaticIP(pod, "Pod")
-	sip.Spec.Used = []string{sip.Spec.IPPool}
 	sip.Spec.IPMap[sip.Spec.IPPool] = &crdv1.OwnerPod{
 		Name:      pod.Name,
 		Namespace: pod.Namespace,
 		UID:       pod.UID,
 	}
+	sip.Spec.Used = []string{sip.Spec.IPPool}
+	sip.Spec.Avaliable = []string{}
+	sip.Spec.Ratio = fmt.Sprintf("%d/%d", len(sip.Spec.Used), len(sip.Spec.IPMap))
+
 	klog.V(3).Infof("new sip ojbect: %+v", sip)
 	actualSIP, err := crdClient.IpkeeperV1().StaticIPs(pod.Namespace).Create(sip)
 	if err != nil {

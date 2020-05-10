@@ -1,6 +1,7 @@
 package staticip
 
 import (
+	"fmt"
 	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -49,6 +50,8 @@ func NewStaticIP(owner apimmetav1.Object, ownerKind string) (sip *ipkv1.StaticIP
 		sip.Spec.IPPool = ownerAnno[util.IPAddressAnnotation]
 	}
 	sip.Spec.Avaliable, sip.Spec.IPMap = initIPMap(sip.Spec.IPPool)
+	sip.Spec.Used = []string{}
+	sip.Spec.Ratio = fmt.Sprintf("%d/%d", len(sip.Spec.Used), len(sip.Spec.IPMap))
 
 	return sip
 }

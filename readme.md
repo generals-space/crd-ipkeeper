@@ -42,9 +42,9 @@ devops                                  1/1     Running   0          4h26m   172
 
 ```console
 $ k get sip
-NAME                   OWNERKIND    NAMESPACE     IPPOOL
-deploy-devops-deploy   Deployment   kube-system   172.16.91.182/24,172.16.91.183/24
-pod-devops             Pod          kube-system   172.16.91.181/24
+NAME                   OWNERKIND    NAMESPACE     USED   IPPOOL
+deploy-devops-deploy   Deployment   kube-system   2/3    172.16.91.142/24,172.16.91.143/24,172.16.91.144/24
+pod-devops             Pod          kube-system   1/1    172.16.91.141/24
 ```
 
 ## 关于

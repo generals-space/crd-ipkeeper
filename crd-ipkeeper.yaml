@@ -72,6 +72,10 @@ spec:
   - name: Namespace
     type: string
     JSONPath: .spec.namespace
+  - name: Used
+    type: string
+    description: 使用比例
+    JSONPath: .spec.ratio
   - name: IPPool
     type: string
     description: IP池
@@ -102,7 +106,7 @@ spec:
       hostPID: true
       containers:
       - name: crd-ipkeeper
-        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.74
+        image: registry.cn-hangzhou.aliyuncs.com/generals-kuber/crd-ipkeeper:0.0.79
         securityContext:
           privileged: true
           capabilities:
