@@ -89,6 +89,11 @@ func (c *Controller) enqueueUpdateDeploy(oldObj, newObj interface{}) {
 //////////////////////////////////////////////////////////////
 // process 实际操作 Add 部分
 func (c *Controller) runAddDeployWorker() {
+	// 注意这里for的用法.
+	// 传统的用法可形容为: for init; condition; post { }
+	// 另外 for {} 作为while语句使用,
+	// 但还有一种, for condition { }, 这里用的就是第三种形式.
+	// 当 condition 返回 false 时结束, 这也表示 workqueue 被关闭了.
 	for c.processNextAddDeployWorkItem() {
 	}
 }
@@ -164,6 +169,11 @@ func (c *Controller) handleAddDeploy(key string) (err error) {
 //////////////////////////////////////////////////////////////
 // process 实际操作 Update 部分
 func (c *Controller) runUpdateDeployWorker() {
+	// 注意这里for的用法.
+	// 传统的用法可形容为: for init; condition; post { }
+	// 另外 for {} 作为while语句使用,
+	// 但还有一种, for condition { }, 这里用的就是第三种形式.
+	// 当 condition 返回 false 时结束, 这也表示 workqueue 被关闭了.
 	for c.processNextUpdateDeployWorkItem() {
 	}
 }

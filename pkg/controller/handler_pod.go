@@ -73,6 +73,11 @@ func (c *Controller) enqueueDelPod(obj interface{}) {
 //////////////////////////////////////////////////////////////
 // process 实际操作 Add 部分
 func (c *Controller) runAddPodWorker() {
+	// 注意这里for的用法.
+	// 传统的用法可形容为: for init; condition; post { }
+	// 另外 for {} 作为while语句使用,
+	// 但还有一种, for condition { }, 这里用的就是第三种形式.
+	// 当 condition 返回 false 时结束, 这也表示 workqueue 被关闭了.
 	for c.processNextAddPodWorkItem() {
 	}
 }
@@ -149,6 +154,11 @@ func (c *Controller) handleAddPod(key string) (err error) {
 //////////////////////////////////////////////////////////////
 // process 实际操作 Del 部分
 func (c *Controller) runDelPodWorker() {
+	// 注意这里for的用法.
+	// 传统的用法可形容为: for init; condition; post { }
+	// 另外 for {} 作为while语句使用,
+	// 但还有一种, for condition { }, 这里用的就是第三种形式.
+	// 当 condition 返回 false 时结束, 这也表示 workqueue 被关闭了.
 	for c.processNextDelPodWorkItem() {
 	}
 }
