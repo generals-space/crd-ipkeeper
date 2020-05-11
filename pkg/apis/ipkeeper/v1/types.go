@@ -16,7 +16,9 @@ type StaticIP struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	// spec字段
 	Spec StaticIPSpec `json:"spec"`
-	// status字段
+	// status字段.
+	// 其实不需要 Status 字段, 因为 StaticIP 本身就是一个反应其他资源状态的类型,
+	// StaticIP 的所有成员表示的都是其他资源的信息.
 	Status StaticIPStatus `json:"status"`
 }
 

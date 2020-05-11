@@ -12,7 +12,6 @@ import (
 	crdClientset "github.com/generals-space/crd-ipkeeper/pkg/client/clientset/versioned"
 	"github.com/generals-space/crd-ipkeeper/pkg/restapi"
 	"github.com/generals-space/crd-ipkeeper/pkg/staticip"
-	"github.com/generals-space/crd-ipkeeper/pkg/util"
 )
 
 // CNIServerHandler ...
@@ -57,40 +56,25 @@ func (csh *CNIServerHandler) handleAdd(req *restful.Request, resp *restful.Respo
 			resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
 			return
 		}
-		// 如果一个 Pod 被 deploy/daemonset 等所有, 那么 StaticIP 一定已经创建好了.
-		// 而如果只是一个单 Pod 资源, 那要等到该 Pod 创建完成后再去补上 StaticIP 对象了.
-		if pod.OwnerReferences != nil {
-			sip, err := staticip.GetPodOwnerSIP(csh.kubeClient, csh.crdClient, pod)
-			if err != nil {
-				klog.Errorf("get sip from owner failed %v", err)
-				resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
-				return
-			}
-			ipAddr, gateway, err = staticip.AccquireIP(csh.crdClient, sip, pod)
-			// ipAddr, gateway, err = csh.getAndOccupyOneIPByOwner(pod)
-			if err != nil {
-				klog.Errorf("get ipAddr and gateway from owner failed %v", err)
-				resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
-				return
-			}
-		} else {
-			ipAddr = pod.Annotations[util.IPAddressAnnotation]
-			gateway = pod.Annotations[util.GatewayAnnotation]
+		// 理论上, 在运行至此处时, Pod/Deployment 资源对应的 StaticIP 早已事先创建了.
+		sip, err := staticip.GetPodOwnerSIP(csh.kubeClient, csh.crdClient, pod)
+		if err != nil {
+			klog.Errorf("get sip from owner failed %v", err)
+			resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
+			return
+		}
+		ipAddr, gateway, err = staticip.AccquireIP(csh.crdClient, sip, pod)
+		// ipAddr, gateway, err = csh.getAndOccupyOneIPByOwner(pod)
+		if err != nil {
+			klog.Errorf("get ipAddr and gateway from owner failed %v", err)
+			resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
+			return
 		}
 
 		if ipAddr == "" || gateway == "" {
 			// wait controller assign an address
 			time.Sleep(2 * time.Second)
 			continue
-		}
-
-		if pod.OwnerReferences == nil {
-			err = staticip.CreateAndRequireIP(csh.crdClient, pod)
-			if err != nil {
-				klog.Errorf("get ipAddr and gateway from owner failed %v", err)
-				resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
-				return
-			}
 		}
 		break
 	}

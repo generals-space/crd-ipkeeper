@@ -45,11 +45,12 @@ type Controller struct {
 	podLister cglisterscorev1.PodLister
 	podSynced cgcache.InformerSynced
 
-	sipLister crdLister.StaticIPLister
-	sipSynced cgcache.InformerSynced
+	// 这3个基本没用上.
+	sipLister   crdLister.StaticIPLister
+	sipSynced   cgcache.InformerSynced
+	addSIPQueue cgworkqueue.RateLimitingInterface
 
 	// queue 的主要作用就是限流, 接收与处理是分为两个部分单独完成的.
-	addSIPQueue    cgworkqueue.RateLimitingInterface
 	addDeployQueue cgworkqueue.RateLimitingInterface
 	// 我曾经尝试过修改 deployment 的 yaml 部署文件, 但无论修改其 metadata,
 	// 还是修改 spec, 或是修改 spec.template 的 rs 部分, 都无法触发 update 事件,
@@ -124,10 +125,6 @@ func NewController(
 		podLister: podInformer.Lister(),
 		podSynced: podInformer.Informer().HasSynced,
 
-		addSIPQueue: cgworkqueue.NewNamedRateLimitingQueue(
-			cgworkqueue.DefaultControllerRateLimiter(),
-			"AddSIP",
-		),
 		addDeployQueue: cgworkqueue.NewNamedRateLimitingQueue(
 			cgworkqueue.DefaultControllerRateLimiter(),
 			"AddDeploy",
@@ -165,10 +162,42 @@ func NewController(
 			// 且 Status 块基本都还是空的, 无法从此处获取到 hostIP, podIP 等信息.
 			// 这个时机应该处于 pause 容器创建之前(或者说过程中),
 			// 因为此时 pause 还没有调用 cni 插件申请到 IP 地址.
-			// AddFunc:    controller.enqueueAddPod,
+			AddFunc:    controller.enqueueAddPod,
 			DeleteFunc: controller.enqueueDelPod,
 		},
 	)
+	/*
+		// informer factory 只是加载回调函数的其中一种方式, 这里给出另外一种.
+
+		listwatcher := cgcache.NewListWatchFromClient(
+			kubeClient.CoreV1().RESTClient(),
+			"pods",
+			"", // 这是 ns 参数, 不知道为空时是不是可以监听所有 ns 的资源.
+			fields.Everything(),
+		)
+		// 区别于 cgcache.NewInformer()
+		// indexer 是一个二级缓存, 使用方法与 workqueue 一样, 存储着目标类型的资源信息,
+		// 在 processItem 过程中从 indexer 获取目标 key 所表示的资源对象.
+		// 如 obj, exists, err := indexer.GetByKey(key).
+		// if err != nil {
+		// 	return err
+		// }
+		// if !exists {
+		// 	return nil
+		// }
+		// pod := obj.(*corev1.Pod)
+		// 不过 index 与 workqueue 相比, 没有了 RateLimit 的功能, 就只有一个缓存结构了.
+		indexer, informer := cgcache.NewIndexerInformer(
+			listwatcher,
+			&corev1.Pod{},
+			0,
+			cgcache.ResourceEventHandlerFuncs{
+				DeleteFunc: controller.enqueueDelPod,
+			},
+			cgcache.Indexers{},
+		)
+	*/
+
 	return
 }
 
@@ -179,7 +208,6 @@ func NewController(
 // 这也会导致传入此通道的 informer 与 各资源类型的 worker 终止退出.
 func (c *Controller) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
-	defer c.addSIPQueue.ShutDown()
 	defer c.addDeployQueue.ShutDown()
 	defer c.updateDeployQueue.ShutDown()
 	defer c.addPodQueue.ShutDown()
@@ -219,7 +247,7 @@ func (c *Controller) run(ctx context.Context) {
 	// 不需要额外的 del 操作.
 	// go utilwait.Until(c.runDelDeployWorker, time.Second, c.stopCh)
 
-	// go utilwait.Until(c.runAddPodWorker, time.Second, c.stopCh)
+	go utilwait.Until(c.runAddPodWorker, time.Second, c.stopCh)
 	go utilwait.Until(c.runDelPodWorker, time.Second, c.stopCh)
 
 	klog.Info("Started workers")

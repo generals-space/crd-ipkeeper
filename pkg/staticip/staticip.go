@@ -28,7 +28,7 @@ func GenerateSIPName(ownerKind, ownerName string) (name string) {
 	return fmt.Sprintf("%s-%s", ownerShortKind, ownerName)
 }
 
-// GetPodOwner 获取 Pod 的 owner 对象, 及其资源类型.
+// GetPodOwner 获取 Pod 的 owner 对象, 及其资源类型, 如果没有则返回其自身.
 func GetPodOwner(
 	kubeClient cgkuber.Interface,
 	pod *corev1.Pod,
@@ -57,7 +57,10 @@ func GetPodOwner(
 			rsOwner := rs.OwnerReferences[0]
 			// 目前已知的 rs 的引用者只有 deployment
 			if rsOwner.Kind == "Deployment" {
-				deploy, err := kubeClient.AppsV1().Deployments(pod.Namespace).Get(rsOwner.Name, apimmetav1.GetOptions{})
+				deploy, err := kubeClient.
+					AppsV1().
+					Deployments(pod.Namespace).
+					Get(rsOwner.Name, apimmetav1.GetOptions{})
 				if err != nil {
 					klog.Errorf("failed to get deploy for pod: %s", err)
 					return nil, "", err
@@ -72,7 +75,9 @@ func GetPodOwner(
 	return nil, "", fmt.Errorf("doesn't support resource type: %s", ownerRef.Kind)
 }
 
-// GetPodOwnerSIP ...
+// GetPodOwnerSIP 返回目标 Pod 对象对应的 StaticIP 对象.
+// 如果是单 Pod 资源(没有 Owner), 可能在调用时相应的 StaticIP 对象还未能创建,
+// 此时 err 为 nil, sip 也为 nil, 需要注意.
 func GetPodOwnerSIP(
 	kubeClient cgkuber.Interface,
 	crdClient crdClientset.Interface,
@@ -85,7 +90,10 @@ func GetPodOwnerSIP(
 	if kind == "Deployment" {
 		deploy := owner.(*appsv1.Deployment)
 		sipName := GenerateSIPName("Deployment", deploy.Name)
-		sip, err = crdClient.IpkeeperV1().StaticIPs(deploy.Namespace).Get(sipName, apimmetav1.GetOptions{})
+		sip, err = crdClient.
+			IpkeeperV1().
+			StaticIPs(deploy.Namespace).
+			Get(sipName, apimmetav1.GetOptions{})
 		if err != nil {
 			if !strings.HasSuffix(err.Error(), "not found") {
 				klog.Errorf("failed to get staticip for pod: %s", err)
@@ -93,12 +101,21 @@ func GetPodOwnerSIP(
 			return nil, err
 		}
 	} else if kind == "Pod" {
+		// 由于这个函数是在处理 Deployment/Pod 资源的 Add 方法中被调用的,
+		// 但由于单个 Pod 的 Add 方法被触发时, 还没有到创建 pause 容器与申请 IP 那一步,
+		// 所以单个 Pod 资源在执行到这里(get sip)的时候一定会出错.
 		pod := owner.(*corev1.Pod)
 		sipName := GenerateSIPName("Pod", pod.Name)
-		sip, err = crdClient.IpkeeperV1().StaticIPs(pod.Namespace).Get(sipName, apimmetav1.GetOptions{})
+		sip, err = crdClient.
+			IpkeeperV1().
+			StaticIPs(pod.Namespace).
+			Get(sipName, apimmetav1.GetOptions{})
 		if err != nil {
+			// 如果 Pod 没有 owner
 			if !strings.HasSuffix(err.Error(), "not found") {
 				klog.Errorf("failed to get staticip for pod: %s", err)
+			} else {
+				err = nil
 			}
 			return nil, err
 		}
@@ -197,31 +214,5 @@ func ReleaseIP(
 		klog.Errorf("failed to occupy one IP from sip: %s", sip.Name)
 		return
 	}
-	return
-}
-
-// CreateAndRequireIP 为指定了静态IP的单个 Pod 资源(没有其他Owner), 创建 StaticIP 对象.
-func CreateAndRequireIP(
-	crdClient crdClientset.Interface,
-	pod *corev1.Pod,
-) (err error) {
-	sip := NewStaticIP(pod, "Pod")
-	sip.Spec.IPMap[sip.Spec.IPPool] = &crdv1.OwnerPod{
-		Name:      pod.Name,
-		Namespace: pod.Namespace,
-		UID:       pod.UID,
-	}
-	sip.Spec.Used = []string{sip.Spec.IPPool}
-	sip.Spec.Avaliable = []string{}
-	sip.Spec.Ratio = fmt.Sprintf("%d/%d", len(sip.Spec.Used), len(sip.Spec.IPMap))
-
-	klog.V(3).Infof("new sip ojbect: %+v", sip)
-	actualSIP, err := crdClient.IpkeeperV1().StaticIPs(pod.Namespace).Create(sip)
-	if err != nil {
-		// if err.Error() == "already exists" {}
-		klog.Fatalf("failed to create new StaticIP for Pod %s: %s", pod.Name, err)
-		return err
-	}
-	klog.Infof("success to create new sip object: %+v", actualSIP)
 	return
 }

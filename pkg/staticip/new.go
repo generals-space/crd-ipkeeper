@@ -7,6 +7,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	apimmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	ipkv1 "github.com/generals-space/crd-ipkeeper/pkg/apis/ipkeeper/v1"
 	crdClientset "github.com/generals-space/crd-ipkeeper/pkg/client/clientset/versioned"
@@ -81,4 +82,28 @@ func GetStaticIP(
 	sipName := GenerateSIPName(ownerKind, ownerName)
 
 	return crdClient.IpkeeperV1().StaticIPs(ownerNS).Get(sipName, metav1.GetOptions{})
+}
+
+// CreateStaticIP ...
+func CreateStaticIP(
+	crdClient crdClientset.Interface,
+	owner apimmetav1.Object,
+	ownerKind string,
+) (err error) {
+	sip := NewStaticIP(owner, ownerKind)
+	getOpt := &apimmetav1.GetOptions{}
+	_, err = crdClient.IpkeeperV1().StaticIPs(sip.Namespace).Get(sip.Name, *getOpt)
+	if err == nil {
+		return fmt.Errorf("sip %s already exist, return", sip.Name)
+	}
+	// klog.Infof("try to create new sip: %s", sip.Name)
+
+	_, err = crdClient.IpkeeperV1().StaticIPs(sip.Namespace).Create(sip)
+	if err != nil {
+		// if err.Error() == "already exists" {}
+		utilruntime.HandleError(err)
+		return fmt.Errorf("failed to create new sip for %s: %s", owner.GetName(), err)
+	}
+	// klog.Infof("success to create new sip object: %+v", actualSIP)
+	return
 }

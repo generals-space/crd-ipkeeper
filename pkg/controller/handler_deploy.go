@@ -2,7 +2,6 @@ package controller
 
 import (
 	appsv1 "k8s.io/api/apps/v1"
-	apimmetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	cgcache "k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
@@ -147,23 +146,7 @@ func (c *Controller) handleAddDeploy(key string) (err error) {
 		return nil
 	}
 
-	sip := staticip.NewStaticIP(deploy, "Deployment")
-	getOpt := &apimmetav1.GetOptions{}
-	_, err = c.crdClient.IpkeeperV1().StaticIPs(sip.Namespace).Get(sip.Name, *getOpt)
-	if err == nil {
-		klog.Infof("sip %s already exist, return", sip.Name)
-		return
-	}
-	klog.Infof("try to create new sip: %s", sip.Name)
-	actualSIP, err := c.crdClient.IpkeeperV1().StaticIPs(sip.Namespace).Create(sip)
-	if err != nil {
-		// if err.Error() == "already exists" {}
-		klog.Fatalf("failed to create new sip for deploy %s: %s", deploy.Name, err)
-		utilruntime.HandleError(err)
-		return err
-	}
-	klog.Infof("success to create new sip object: %+v", actualSIP)
-	return
+	return staticip.CreateStaticIP(c.crdClient, deploy, "Deployment")
 }
 
 //////////////////////////////////////////////////////////////
