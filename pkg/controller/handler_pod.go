@@ -7,7 +7,6 @@ import (
 	"k8s.io/klog"
 
 	ipkv1 "github.com/generals-space/crd-ipkeeper/pkg/apis/ipkeeper/v1"
-	"github.com/generals-space/crd-ipkeeper/pkg/staticip"
 )
 
 //////////////////////////////////////////////////////////////
@@ -29,7 +28,7 @@ func (c *Controller) enqueueAddPod(obj interface{}) {
 
 	pod := obj.(*corev1.Pod)
 	// 查询是否存在当前 Pod 对应的 StaticIP 对象
-	_, err = staticip.GetPodOwnerSIP(c.kubeClient, c.crdClient, pod)
+	_, err = c.sipHelper.GetPodOwnerSIP(pod)
 	if err != nil {
 		utilruntime.HandleError(err)
 		return
@@ -59,7 +58,7 @@ func (c *Controller) enqueueDelPod(obj interface{}) {
 		return
 	}
 	// 查询是否存在当前 Pod 对应的 StaticIP 对象
-	_, err = staticip.GetPodOwnerSIP(c.kubeClient, c.crdClient, pod)
+	_, err = c.sipHelper.GetPodOwnerSIP(pod)
 	if err != nil {
 		utilruntime.HandleError(err)
 		return
@@ -108,50 +107,16 @@ func (c *Controller) handleAddPod(key string) (err error) {
 	}
 	var sip *ipkv1.StaticIP
 	// 查询是否存在当前 Pod 对应的 StaticIP 对象
-	sip, err = staticip.GetPodOwnerSIP(c.kubeClient, c.crdClient, pod)
+	sip, err = c.sipHelper.GetPodOwnerSIP(pod)
 	if err != nil {
 		klog.Warning("failed to find static ip for pod %s: %s", pod.Name, err)
 		return nil
 	}
 	// 当 Pod 没有 Owner 时, err 为 nil, sip 也为 nil, 此时需要为其创建对应 StaticIP 对象.
 	if sip == nil {
-		return staticip.CreateStaticIP(c.crdClient, pod, "Pod")
+		return c.sipHelper.CreateStaticIP(pod, "Pod")
 	}
 
-	/*
-		////////////////////////////////////////////////////////////////////
-		// 在触发 AddFunc() 回调时, Pod 还处理 Pending 状态, Status 字段中并没有有效信息,
-		// 所以无法直接使用 pod.Status.PodIP 获取该 Pod 的实际 IP.
-		// 不只如此, 连 Metadata 部分大多也是空的, 无法通过 UID 与 StaticIP 关联.
-		// 这里一直循环, 直到 pod 信息完整(sip 信息也会被补全)
-		// 之后考虑使用 Watch 操作, 开单独的协程来完成这个操作.
-		var flag bool
-		for i := 0; i < 10; i++ {
-			time.Sleep(time.Second * 2)
-			// 查询是否存在当前 Pod 对应的 StaticIP 对象
-			sip, err := staticip.GetPodOwnerSIP(c.kubeClient, c.crdClient, pod)
-			if err != nil {
-				klog.Warning("failed to find static ip for pod %s: %s", pod.Name, err)
-				return nil
-			}
-			// sip 初建时 Generation 为 1, 在 ipam 时期会被修改.
-			if sip.Spec.OwnerKind == "Deployment" && sip.Generation > 1 {
-				flag = true
-				break
-			}
-		}
-		if !flag {
-			klog.Warningf("the pod %s doesn't get an ip at last", pod.Name)
-			return
-		}
-		// staticip.ReallocIP(sip, pod, "add")
-
-		_, err = c.crdClient.IpkeeperV1().StaticIPs(sip.Namespace).Update(sip)
-		if err != nil {
-			klog.Errorf("failed to occupy one IP from sip: %s", sip.Name)
-			return
-		}
-	*/
 	return
 }
 
@@ -193,12 +158,12 @@ func (c *Controller) handleDelPod(key string) (err error) {
 		return nil
 	}
 	// 查询是否存在当前 Pod 对应的 StaticIP 对象
-	sip, err := staticip.GetPodOwnerSIP(c.kubeClient, c.crdClient, pod)
+	sip, err := c.sipHelper.GetPodOwnerSIP(pod)
 	if err != nil {
 		klog.Warning("failed to find static ip for pod %s: %s", pod.Name, err)
 		return nil
 	}
 
 	////////////////////////////////////////////////////////////////////
-	return staticip.ReleaseIP(c.crdClient, sip, pod)
+	return c.sipHelper.ReleaseIP(sip, pod)
 }

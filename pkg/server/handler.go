@@ -19,6 +19,7 @@ type CNIServerHandler struct {
 	Config     *Configuration
 	kubeClient cgkuber.Interface
 	crdClient  crdClientset.Interface
+	sipHelper  *staticip.Helper
 }
 
 // newCNIServerHandler 挂载 cni server 的 rest api 接口.
@@ -31,6 +32,7 @@ func newCNIServerHandler(
 		Config:     config,
 		kubeClient: kubeClient,
 		crdClient:  crdClient,
+		sipHelper:  staticip.New(kubeClient, crdClient),
 	}
 }
 
@@ -57,13 +59,13 @@ func (csh *CNIServerHandler) handleAdd(req *restful.Request, resp *restful.Respo
 			return
 		}
 		// 理论上, 在运行至此处时, Pod/Deployment 资源对应的 StaticIP 早已事先创建了.
-		sip, err := staticip.GetPodOwnerSIP(csh.kubeClient, csh.crdClient, pod)
+		sip, err := csh.sipHelper.GetPodOwnerSIP(pod)
 		if err != nil {
 			klog.Errorf("get sip from owner failed %v", err)
 			resp.WriteHeaderAndEntity(http.StatusInternalServerError, err)
 			return
 		}
-		ipAddr, gateway, err = staticip.AccquireIP(csh.crdClient, sip, pod)
+		ipAddr, gateway, err = csh.sipHelper.AccquireIP(sip, pod)
 		// ipAddr, gateway, err = csh.getAndOccupyOneIPByOwner(pod)
 		if err != nil {
 			klog.Errorf("get ipAddr and gateway from owner failed %v", err)

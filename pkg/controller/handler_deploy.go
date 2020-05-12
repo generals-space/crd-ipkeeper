@@ -146,7 +146,7 @@ func (c *Controller) handleAddDeploy(key string) (err error) {
 		return nil
 	}
 
-	return staticip.CreateStaticIP(c.crdClient, deploy, "Deployment")
+	return c.sipHelper.CreateStaticIP(deploy, "Deployment")
 }
 
 //////////////////////////////////////////////////////////////
@@ -187,8 +187,8 @@ func (c *Controller) handleUpdateDeploy(key string) (err error) {
 		return nil
 	}
 
-	oldSIP, err := staticip.GetStaticIP(c.crdClient, deploy, "Deployment")
-	newSIP := staticip.NewStaticIP(deploy, "Deployment")
+	oldSIP, err := c.sipHelper.GetStaticIP(deploy, "Deployment")
+	newSIP := c.sipHelper.NewStaticIP(deploy, "Deployment")
 
 	return staticip.RenewStaticIP(c.kubeClient, c.crdClient, oldSIP, newSIP)
 }

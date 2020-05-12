@@ -24,6 +24,7 @@ import (
 	crdScheme "github.com/generals-space/crd-ipkeeper/pkg/client/clientset/versioned/scheme"
 	crdInformers "github.com/generals-space/crd-ipkeeper/pkg/client/informers/externalversions"
 	crdLister "github.com/generals-space/crd-ipkeeper/pkg/client/listers/ipkeeper/v1"
+	"github.com/generals-space/crd-ipkeeper/pkg/staticip"
 )
 
 const controllerAgentName = "ipkeeper-controller"
@@ -35,6 +36,7 @@ type Controller struct {
 
 	kubeClient cgkuber.Interface
 	crdClient  crdClientset.Interface
+	sipHelper  *staticip.Helper
 
 	kuberInformerFactory kubeInformers.SharedInformerFactory
 	crdInformerFactory   crdInformers.SharedInformerFactory
@@ -112,6 +114,7 @@ func NewController(
 
 		kubeClient: kubeClient,
 		crdClient:  crdClient,
+		sipHelper:  staticip.New(kubeClient, crdClient),
 
 		kuberInformerFactory: kubeInformerFactory,
 		crdInformerFactory:   crdInformerFactory,
